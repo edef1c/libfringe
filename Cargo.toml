@@ -1,0 +1,8 @@
+[package]
+name = "lwkt"
+version = "0.0.1"
+authors = ["Nathan Zadoks <nathan@nathan7.eu>"]
+build = "build.rs"
+
+[dependencies]
+fn_box = "^1.0.1"
