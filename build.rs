@@ -18,7 +18,7 @@ fn main() {
       if let Some(basename) = eat_extension(filename, ".c") {
         outpath = format!("{}/{}.o", out_dir, basename);
 
-        Command::new("cc").args(&[filepath.as_slice(), "-c", "-o"])
+        Command::new("cc").args(&[filepath.as_slice(), "-c", "-fPIC", "-o"])
                           .arg(outpath.clone())
                           .status().unwrap();
       }
