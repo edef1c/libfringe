@@ -4,15 +4,15 @@ use std::mem::{size_of, zeroed};
 use stack::Stack;
 
 extern "C" {
-  #[link_name = "lwut_bootstrap"]
+  #[link_name = "lwt_bootstrap"]
   pub fn bootstrap();
-  #[link_name = "lwut_swapcontext"]
+  #[link_name = "lwt_swapcontext"]
   pub fn swapcontext(save: *mut Registers, restore: *mut Registers);
-  #[link_name = "lwut_get_sp_limit"]
+  #[link_name = "lwt_get_sp_limit"]
   pub fn get_sp_limit() -> *const u8;
-  #[link_name = "lwut_set_sp_limit"]
+  #[link_name = "lwt_set_sp_limit"]
   pub fn set_sp_limit(limit: *const u8);
-  #[link_name = "lwut_abort"]
+  #[link_name = "lwt_abort"]
   pub fn abort() -> !;
 }
 

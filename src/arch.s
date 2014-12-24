@@ -23,8 +23,8 @@ struc context
   ctx_xmm5 resq 2
 endstruc
 
-global lwut_swapcontext
-lwut_swapcontext:
+global lwt_swapcontext
+lwt_swapcontext:
 ;; this is where the actual context switching takes place. first, save every
 ;; register in the current context into the leaving context, pointed at by rdi,
 ;; making sure the return address ends up in the IP slot. then, restore every
@@ -77,8 +77,8 @@ lwut_swapcontext:
 
   jmp [rsi+ctx_ip]
 
-global lwut_bootstrap
-lwut_bootstrap:
+global lwt_bootstrap
+lwt_bootstrap:
 ;; some of the parameter registers aren't saved on context switch, and thus
 ;; can't be set into the struct directly. thus, initialisation from Rust-land
 ;; places the parameters in unrelated registers, and we frob them into place
@@ -96,18 +96,18 @@ lwut_bootstrap:
 ;; functions, with inline assembly, but I prefer keeping all the assembly-land
 ;; stuff in here.
 
-global lwut_set_sp_limit
-lwut_set_sp_limit:
+global lwt_set_sp_limit
+lwt_set_sp_limit:
   mov [fs:0x70], rdi
   ret
 
-global lwut_get_sp_limit
-lwut_get_sp_limit:
+global lwt_get_sp_limit
+lwt_get_sp_limit:
   mov rax, [fs:0x70]
   ret
 
-global lwut_abort
-lwut_abort:
+global lwt_abort
+lwt_abort:
 ;; when a context is created for a native thread, it should only be switched
 ;; out of. if it's accidentally switched into, it'll hit this, because that's
 ;; what we set the initial IP to.
