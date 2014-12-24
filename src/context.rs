@@ -1,4 +1,3 @@
-use libc;
 use std::mem::transmute;
 use std::raw;
 use fn_box::FnBox;
@@ -22,11 +21,11 @@ impl Context {
 
     Context {
       regs: arch::initialise_call_frame(&mut stack,
-        init_ctx::<T, Args, Result> as libc::uintptr_t,
-        &[init as libc::uintptr_t,
-          data as libc::uintptr_t,
-          f.data as libc::uintptr_t,
-          f.vtable as libc::uintptr_t]),
+        init_ctx::<T, Args, Result> as arch::uintptr_t,
+        &[init as arch::uintptr_t,
+          data as arch::uintptr_t,
+          f.data as arch::uintptr_t,
+          f.vtable as arch::uintptr_t]),
       stack: stack
     }
   }
