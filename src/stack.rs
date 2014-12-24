@@ -51,7 +51,7 @@ impl Stack {
     }
   }
 
-  pub fn top(&self) -> *mut u8 {
+  pub fn top(&mut self) -> *mut u8 {
     unsafe {
       match *self {
         Stack::Native { .. } => ptr::null_mut(),
