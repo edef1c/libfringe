@@ -7,12 +7,12 @@
 
 // Register a stack with Valgrind. start < end. Returns an integer ID that can
 // be used to deregister the stack when it's deallocated.
-unsigned int lwut_stack_register(const void *start, const void *end) {
+unsigned int lwt_stack_register(const void *start, const void *end) {
   return VALGRIND_STACK_REGISTER(start, end);
 }
 
 // Deregister a stack from Valgrind. Takes the integer ID that was returned
 // on registration.
-void lwut_stack_deregister(unsigned int id) {
+void lwt_stack_deregister(unsigned int id) {
   VALGRIND_STACK_DEREGISTER(id);
 }
