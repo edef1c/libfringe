@@ -84,11 +84,12 @@ lwt_bootstrap:
 ;; places the parameters in unrelated registers, and we frob them into place
 ;; out here, in assembly-land. below are the parameter registers in order,
 ;; along with the alternative register used in parentheses, if there is one.
-;; rdi, rsi (r13), rdx (r14), rcx (r15), r8, r9
-  mov rsi, r13
-  mov rdx, r14
-  mov rcx, r15
-  jmp r12
+;; rdi, rsi (r12), rdx (r13), rcx (r14), r8(r15), r9
+  mov rsi, r12
+  mov rdx, r13
+  mov rcx, r14
+  mov r8, r15
+  jmp rbx
 
 
 ;; Rust stores a stack limit at [fs:0x70]. These two functions set and retrieve
