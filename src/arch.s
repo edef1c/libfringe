@@ -2,7 +2,7 @@
 BITS 64
 
 ;; the structure containing every register that is saved on context switches.
-;; this needs to match the struct in context.rs, or shit will break badly.
+;; this needs to match the struct in arch.rs, or shit will break badly.
 struc context
   ctx_rbx resq 1
   ctx_rsp resq 1
