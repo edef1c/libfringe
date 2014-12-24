@@ -51,12 +51,12 @@ impl Stack {
     }
   }
 
-  pub fn top(&self) -> *const u8 {
+  pub fn top(&self) -> *mut u8 {
     unsafe {
       match *self {
-        Stack::Native { .. } => ptr::null(),
+        Stack::Native { .. } => ptr::null_mut(),
         Stack::Managed { ref buf, .. } => {
-          buf.data().offset(buf.len() as int) as *const _
+          buf.data().offset(buf.len() as int)
         }
       }
     }
