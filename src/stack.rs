@@ -1,5 +1,5 @@
 use platform;
-use std::ptr;
+use core::ptr;
 
 pub enum Stack {
   Native {
