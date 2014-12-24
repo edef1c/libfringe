@@ -43,7 +43,7 @@ impl Registers {
   pub fn new() -> Registers {
     unsafe {
       Registers {
-        ip: abort as u64,
+        ip: abort as uintptr_t,
         .. zeroed()
       }
     }
