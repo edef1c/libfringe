@@ -1,4 +1,5 @@
 use libc;
+use platform;
 use std::ptr;
 use std::os::{errno, page_size, MemoryMap, MapReadable, MapWritable,
               MapNonStandardFlags};
@@ -17,11 +18,6 @@ pub enum Stack {
   }
 }
 
-extern "C" {
-  fn lwut_stack_register(start: *const u8, end: *const u8) -> libc::c_uint;
-  fn lwut_stack_deregister(id: libc::c_uint);
-}
-
 impl Stack {
   pub fn new(size: uint) -> Stack {
     let buf = match MemoryMap::new(size, &[MapReadable, MapWritable,
@@ -36,8 +32,8 @@ impl Stack {
     }
 
     let valgrind_id = unsafe {
-      lwut_stack_register(buf.data().offset(buf.len() as int) as *const _,
-                          buf.data() as *const _)
+      platform::stack_register(buf.data().offset(buf.len() as int) as *const _,
+                               buf.data() as *const _)
     };
 
 
@@ -91,7 +87,7 @@ impl Drop for Stack {
     match *self {
       Stack::Native { .. } => {},
       Stack::Managed { valgrind_id, .. } => unsafe {
-        lwut_stack_deregister(valgrind_id);
+        platform::stack_deregister(valgrind_id);
       }
     }
   }
