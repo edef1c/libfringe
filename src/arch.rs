@@ -50,36 +50,6 @@ impl Registers {
   }
 }
 
-macro_rules! into_regs_ {
-  ($regs:ident { $reg:ident } <- $iter:ident) => {
-    match $iter.next() {
-      Some(value) => {
-        $regs.$reg = *value;
-        Some($iter)
-      }
-      None => None
-    }
-  };
-  ($regs:ident { $reg:ident, $($regs_rest:ident),* } <- $iter:ident) => {
-    match $iter.next() {
-      Some(value) => {
-        $regs.$reg = *value;
-        into_regs_!($regs { $($regs_rest),* } <- $iter)
-      }
-      None => None
-    }
-  };
-}
-
-macro_rules! into_regs {
-  ($regs:ident { $($regs_rest:ident),* } <- $iter:expr) => {
-    {
-      let mut iter = $iter;
-      into_regs_!($regs { $($regs_rest),* } <- iter)
-    }
-  }
-}
-
 pub fn initialise_call_frame(stack: &mut Stack, init: uintptr_t, args: &[uintptr_t]) -> Registers {
   let sp = stack.top() as *mut uintptr_t;
   let sp = align_down_mut(sp, 16);
@@ -96,7 +66,7 @@ pub fn initialise_call_frame(stack: &mut Stack, init: uintptr_t, args: &[uintptr
     .. Registers::new()
   };
 
-  match into_regs!(regs { rdi, r13, r14, r15 } <- args.iter()) {
+  match into_fields!(regs { rdi, r13, r14, r15 } <- args.iter()) {
     Some(mut args) => if args.next().is_some() {
       panic!("too many arguments")
     },

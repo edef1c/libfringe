@@ -4,6 +4,9 @@ extern crate fn_box;
 
 pub use context::Context;
 
+#[macro_escape]
+mod macros;
+
 mod context;
 mod stack;
 
