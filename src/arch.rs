@@ -1,5 +1,6 @@
-use std::simd::u64x2;
-use std::mem::{size_of, zeroed};
+use core::prelude::*;
+use core::simd::u64x2;
+use core::mem::{size_of, zeroed};
 
 use stack::Stack;
 

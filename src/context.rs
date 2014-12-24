@@ -1,5 +1,8 @@
-use std::mem::transmute;
-use std::raw;
+use core::prelude::*;
+
+use core::mem::transmute;
+use core::raw;
+use alloc::boxed::Box;
 use fn_box::FnBox;
 
 use stack::Stack;
