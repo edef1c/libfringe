@@ -62,11 +62,11 @@ pub fn initialise_call_frame(stack: &mut Stack, init: uintptr_t, args: &[uintptr
     rbp: 0,
     rsp: sp as uintptr_t,
     ip: bootstrap as uintptr_t,
-    r12: init,
+    rbx: init,
     .. Registers::new()
   };
 
-  match into_fields!(regs { rdi, r13, r14, r15 } <- args.iter().cloned()) {
+  match into_fields!(regs { rdi, r12, r13, r14, r15 } <- args.iter().cloned()) {
     Some(mut args) => if args.next().is_some() {
       panic!("too many arguments")
     },
