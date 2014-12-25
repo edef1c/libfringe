@@ -95,7 +95,7 @@ fn align_down_mut<T>(sp: *mut T, n: uint) -> *mut T {
   sp as *mut T
 }
 
-// ptr::offset_mmut is positive ints only
+// ptr::offset_mut is positive ints only
 #[inline]
 pub fn offset_mut<T>(ptr: *mut T, count: int) -> *mut T {
   (ptr as int + count * (size_of::<T>() as int)) as *mut T
