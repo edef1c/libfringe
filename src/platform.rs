@@ -1,8 +1,8 @@
 extern crate libc;
 extern crate std;
 use self::std::prelude::*;
-use self::std::os::{errno, page_size, MemoryMap, MapReadable, MapWritable,
-                    MapNonStandardFlags};
+use self::std::os::{errno, page_size, MemoryMap};
+use self::std::os::MapOption::{MapReadable, MapWritable, MapNonStandardFlags};
 
 extern "C" {
   #[link_name = "lwt_stack_register"]
