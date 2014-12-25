@@ -91,22 +91,6 @@ lwt_bootstrap:
   mov r8, r15
   jmp rbx
 
-
-;; Rust stores a stack limit at [fs:0x70]. These two functions set and retrieve
-;; the limit. They could alternatively be implemented as #[inline(always)] Rust
-;; functions, with inline assembly, but I prefer keeping all the assembly-land
-;; stuff in here.
-
-global lwt_set_sp_limit
-lwt_set_sp_limit:
-  mov [fs:0x70], rdi
-  ret
-
-global lwt_get_sp_limit
-lwt_get_sp_limit:
-  mov rax, [fs:0x70]
-  ret
-
 global lwt_abort
 lwt_abort:
 ;; when a context is created for a native thread, it should only be switched
