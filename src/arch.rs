@@ -9,10 +9,6 @@ extern "C" {
   pub fn bootstrap();
   #[link_name = "lwt_swapcontext"]
   pub fn swapcontext(save: *mut Registers, restore: *mut Registers);
-  #[link_name = "lwt_get_sp_limit"]
-  pub fn get_sp_limit() -> *const u8;
-  #[link_name = "lwt_set_sp_limit"]
-  pub fn set_sp_limit(limit: *const u8);
   #[link_name = "lwt_abort"]
   pub fn abort() -> !;
 }
@@ -75,6 +71,22 @@ pub fn initialise_call_frame(stack: &mut Stack, init: uintptr_t, args: &[uintptr
   }
 
   regs
+}
+
+// Rust stores a stack limit at [fs:0x70]. These two functions set and retrieve
+// the limit. They're marked as #[inline(always)] so that they can be used in
+// situations where the stack limit is invalid.
+
+#[inline(always)]
+pub unsafe fn get_sp_limit() -> *const u8 {
+  let limit;
+  asm!("movq %fs:0x70, $0" : "=r"(limit) ::: "volatile");
+  limit
+}
+
+#[inline(always)]
+pub unsafe fn set_sp_limit(limit: *const u8) {
+  asm!("movq $0, %fs:0x70" :: "r"(limit) :: "volatile");
 }
 
 #[inline]

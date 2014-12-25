@@ -1,4 +1,4 @@
-#![feature(default_type_params, macro_rules, phase, globs)]
+#![feature(default_type_params, macro_rules, phase, globs, asm)]
 #![no_std]
 
 #[phase(plugin, link)]
