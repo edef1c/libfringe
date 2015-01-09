@@ -1,6 +1,6 @@
 extern crate libc;
 extern crate std;
-use self::std::prelude::*;
+use self::std::prelude::v1::*;
 use self::std::os::{errno, page_size, MemoryMap};
 use self::std::os::MapOption::{MapReadable, MapWritable, MapNonStandardFlags};
 
