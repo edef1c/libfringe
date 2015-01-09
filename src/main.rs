@@ -1,4 +1,3 @@
-#![feature(unboxed_closures, default_type_params)]
 extern crate lwkt;
 extern crate fn_box;
 
@@ -14,7 +13,7 @@ fn main() {
 
   let mut native = unsafe { Context::native() };
 
-  fn init(ctx: *mut (*mut Context, *mut Context), f: Box<FnBox()>) -> ! {
+  fn init(ctx: *mut (*mut Context, *mut Context), f: Box<FnBox<(), ()>>) -> ! {
     unsafe {
       let (native, green) = *ctx;
 

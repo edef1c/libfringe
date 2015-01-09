@@ -6,7 +6,7 @@ use alloc::boxed::Box;
 use fn_box::FnBox;
 
 use stack::Stack;
-use arch::{mod, Registers};
+use arch::{self, Registers};
 
 pub struct Context {
   regs: Registers,
