@@ -9,7 +9,7 @@ pub enum Stack {
 }
 
 impl Stack {
-  pub fn new(size: uint) -> Stack {
+  pub fn new(size: usize) -> Stack {
     Stack::Managed(platform::Stack::new(size))
   }
 

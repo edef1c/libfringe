@@ -7,9 +7,9 @@ use lwkt::Context;
 use fn_box::FnBox;
 
 fn main() {
-  let f = box move |:| {
+  let f = Box::new(move |:| {
     println!("Hello, world!")
-  };
+  });
 
   let mut native = unsafe { Context::native() };
 
@@ -24,7 +24,7 @@ fn main() {
     }
   }
 
-  let mut ctx = box { (&mut native as *mut Context, null_mut()) };
+  let mut ctx = Box::new((&mut native as *mut Context, null_mut()));
   let mut green = Context::new(init, &mut *ctx as *mut _, f);
   ctx.1 = &mut green as *mut Context;
 

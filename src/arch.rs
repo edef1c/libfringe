@@ -90,13 +90,13 @@ pub unsafe fn set_sp_limit(limit: *const u8) {
 }
 
 #[inline]
-fn align_down_mut<T>(sp: *mut T, n: uint) -> *mut T {
-  let sp = (sp as uint) & !(n - 1);
+fn align_down_mut<T>(sp: *mut T, n: usize) -> *mut T {
+  let sp = (sp as usize) & !(n - 1);
   sp as *mut T
 }
 
 // ptr::offset_mut is positive ints only
 #[inline]
-pub fn offset_mut<T>(ptr: *mut T, count: int) -> *mut T {
-  (ptr as int + count * (size_of::<T>() as int)) as *mut T
+pub fn offset_mut<T>(ptr: *mut T, count: isize) -> *mut T {
+  (ptr as isize + count * (size_of::<T>() as isize)) as *mut T
 }

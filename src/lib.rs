@@ -1,4 +1,4 @@
-#![feature(phase, asm)]
+#![feature(asm)]
 #![no_std]
 
 #[macro_use]
