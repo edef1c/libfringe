@@ -22,20 +22,20 @@ const STACK_FLAGS: libc::c_int = libc::MAP_STACK
                                | libc::MAP_ANON;
 
 impl Stack {
-  pub fn new(size: uint) -> Stack {
+  pub fn new(size: usize) -> Stack {
     let buf = match MemoryMap::new(size, &[MapReadable, MapWritable,
                                    MapNonStandardFlags(STACK_FLAGS)]) {
       Ok(map) => map,
-      Err(e) => panic!("mmap for stack of size {} failed: {}", size, e)
+      Err(e) => panic!("mmap for stack of size {} failed: {:?}", size, e)
     };
 
     if !protect_last_page(&buf) {
-      panic!("Could not memory-protect guard page. stack={}, errno={}",
+      panic!("Could not memory-protect guard page. stack={:p}, errno={}",
              buf.data(), errno());
     }
 
     let valgrind_id = unsafe {
-      stack_register(buf.data().offset(buf.len() as int) as *const _,
+      stack_register(buf.data().offset(buf.len() as isize) as *const _,
                      buf.data() as *const _)
     };
 
@@ -65,13 +65,13 @@ impl Drop for Stack {
 impl Stack {
   pub fn top(&mut self) -> *mut u8 {
     unsafe {
-      self.buf.data().offset(self.buf.len() as int)
+      self.buf.data().offset(self.buf.len() as isize)
     }
   }
 
   pub fn limit(&self) -> *const u8 {
     unsafe {
-      self.buf.data().offset(page_size() as int) as *const _
+      self.buf.data().offset(page_size() as isize) as *const _
     }
   }
 }
