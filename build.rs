@@ -22,13 +22,6 @@ fn main() {
                           .arg(outpath.clone())
                           .status().unwrap();
       }
-      else if let Some(basename) = eat_extension(filename, ".s") {
-        outpath = format!("{}/{}.o", out_dir, basename);
-
-        Command::new("nasm").args(&[filepath.as_slice(), "-felf64", "-o"])
-                            .arg(outpath.clone())
-                            .status().unwrap();
-      }
       else { continue }
 
       objects.push(outpath);

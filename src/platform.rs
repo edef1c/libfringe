@@ -1,8 +1,10 @@
+#![allow(unstable)]
 extern crate libc;
 extern crate std;
 use self::std::prelude::v1::*;
 use self::std::os::{errno, page_size, MemoryMap};
 use self::std::os::MapOption::{MapReadable, MapWritable, MapNonStandardFlags};
+use stack;
 
 extern "C" {
   #[link_name = "lwt_stack_register"]
@@ -62,14 +64,14 @@ impl Drop for Stack {
   }
 }
 
-impl Stack {
-  pub fn top(&mut self) -> *mut u8 {
+impl stack::Stack for Stack {
+  fn top(&mut self) -> *mut u8 {
     unsafe {
       self.buf.data().offset(self.buf.len() as isize)
     }
   }
 
-  pub fn limit(&self) -> *const u8 {
+  fn limit(&self) -> *const u8 {
     unsafe {
       self.buf.data().offset(page_size() as isize) as *const _
     }
