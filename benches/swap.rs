@@ -1,4 +1,4 @@
-#![feature(unboxed_closures, default_type_params, asm)]
+#![feature(unboxed_closures, default_type_params, box_syntax)]
 extern crate test;
 extern crate libc;
 extern crate lwkt;
@@ -33,16 +33,4 @@ fn swap(b: &mut Bencher) {
   b.iter(|| unsafe {
     Context::swap(&mut native, &mut green);
   })
-}
-
-#[bench]
-fn kernel_swap(b: &mut Bencher) {
-  b.iter(|| unsafe {
-    asm!("movq $$102, %rax\n\
-          syscall"
-         :
-         :
-         : "rax", "rcx"
-         : "volatile");
-  });
 }
