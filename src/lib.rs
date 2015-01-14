@@ -2,16 +2,12 @@
 #![no_std]
 
 #[macro_use]
+#[allow(unstable)]
 extern crate core;
-extern crate alloc;
-extern crate fn_box;
 
 pub use context::Context;
 
-mod std { pub use core::fmt; }
-
-#[macro_use]
-mod macros;
+mod std { pub use core::*; }
 
 mod context;
 mod stack;
