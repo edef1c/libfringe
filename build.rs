@@ -1,3 +1,4 @@
+#![allow(unstable)]
 use std::io::Command;
 use std::io::fs::PathExtensions;
 use std::io::fs;
@@ -18,7 +19,7 @@ fn main() {
       if let Some(basename) = eat_extension(filename, ".c") {
         outpath = format!("{}/{}.o", out_dir, basename);
 
-        Command::new("cc").args(&[filepath.as_slice(), "-c", "-fPIC", "-o"])
+        Command::new("cc").args(&[&*filepath, "-c", "-fPIC", "-o"])
                           .arg(outpath.clone())
                           .status().unwrap();
       }
@@ -38,7 +39,7 @@ fn main() {
 
 fn eat_extension<'a>(s: &'a str, ext: &str) -> Option<&'a str> {
   if s.ends_with(ext) {
-    Some(s.slice_to(s.len() - ext.len()))
+    Some(&s[..s.len() - ext.len()])
   }
   else {
     None
