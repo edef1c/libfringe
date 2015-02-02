@@ -1,7 +1,7 @@
-#![allow(unstable)]
-use std::io::Command;
-use std::io::fs::PathExtensions;
-use std::io::fs;
+#![feature(io, path, os)]
+use std::old_io::Command;
+use std::old_io::fs::PathExtensions;
+use std::old_io::fs;
 use std::os;
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
   }
 
   Command::new("ar").args(&["crus", "libcontext.a"])
-                    .args(objects.as_slice())
+                    .args(&*objects)
                     .cwd(&Path::new(&out_dir))
                     .status().unwrap();
 
