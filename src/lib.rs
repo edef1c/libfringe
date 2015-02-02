@@ -1,8 +1,8 @@
-#![feature(asm)]
+#![feature(asm, core)]
+#![feature(os, libc)]
 #![no_std]
 
 #[macro_use]
-#[allow(unstable)]
 extern crate core;
 
 #[cfg(test)]

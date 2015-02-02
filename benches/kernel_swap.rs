@@ -1,4 +1,4 @@
-#![feature(asm)]
+#![feature(asm, test)]
 extern crate test;
 use test::Bencher;
 

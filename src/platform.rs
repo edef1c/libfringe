@@ -1,4 +1,3 @@
-#![allow(unstable)]
 extern crate libc;
 extern crate std;
 use self::std::prelude::v1::*;
