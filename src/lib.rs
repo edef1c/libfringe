@@ -1,3 +1,4 @@
+#![feature(no_std)]
 #![feature(asm, core)]
 #![feature(os, libc)]
 #![no_std]
