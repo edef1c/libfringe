@@ -7,7 +7,7 @@ static mut ctx_slot: *mut Context = 0 as *mut Context;
 
 fn main() {
   unsafe {
-    let mut ctx = Context::new(move |:| {
+    let mut ctx = Context::new(move || {
       println!("it's alive!");
       (*ctx_slot).swap();
     });
