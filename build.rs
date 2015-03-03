@@ -9,7 +9,7 @@ fn main() {
   let mut objects = Vec::new();
 
   let files = fs::readdir(&Path::new("src")).unwrap();
-  let mut files = files.iter().filter(|p| p.is_file());
+  let files = files.iter().filter(|p| p.is_file());
 
   for file in files {
     if let Some(filename) = file.filename_str() {
