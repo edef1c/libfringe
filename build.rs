@@ -1,11 +1,11 @@
-#![feature(io, path, os)]
+#![feature(old_io, old_path)]
 use std::old_io::Command;
 use std::old_io::fs::PathExtensions;
 use std::old_io::fs;
-use std::os;
+use std::env;
 
 fn main() {
-  let out_dir = os::getenv("OUT_DIR").unwrap();
+  let out_dir = env::var("OUT_DIR").unwrap();
   let mut objects = Vec::new();
 
   let files = fs::readdir(&Path::new("src")).unwrap();
