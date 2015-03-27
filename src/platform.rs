@@ -1,58 +1,82 @@
 extern crate libc;
 extern crate std;
 use self::std::prelude::v1::*;
-use self::std::os::{errno, MemoryMap};
-use self::std::env::page_size;
-use self::std::os::MapOption::{MapReadable, MapWritable, MapNonStandardFlags};
+use self::std::env;
+use self::std::io::Error as IoError;
+use self::libc::{c_void, size_t};
+use core::ptr;
 use stack;
 
 extern "C" {
   #[link_name = "lwt_stack_register"]
-  fn stack_register(start: *const u8, end: *const u8) -> libc::c_uint;
+  fn stack_register(start: *const c_void, end: *const c_void) -> libc::c_uint;
   #[link_name = "lwt_stack_deregister"]
   fn stack_deregister(id: libc::c_uint);
 }
 
+#[allow(raw_pointer_derive)]
+#[derive(Debug)]
 pub struct Stack {
-  buf: MemoryMap,
+  ptr: *mut u8,
+  len: usize,
   valgrind_id: libc::c_uint
 }
 
-
-const STACK_FLAGS: libc::c_int = libc::MAP_STACK
-                               | libc::MAP_PRIVATE
-                               | libc::MAP_ANON;
-
-impl Stack {
-  pub fn new(size: usize) -> Stack {
-    let buf = match MemoryMap::new(size, &[MapReadable, MapWritable,
-                                   MapNonStandardFlags(STACK_FLAGS)]) {
-      Ok(map) => map,
-      Err(e) => panic!("mmap for stack of size {} failed: {:?}", size, e)
-    };
-
-    if !protect_last_page(&buf) {
-      panic!("Could not memory-protect guard page. stack={:p}, errno={}",
-             buf.data(), errno());
+impl stack::Stack for Stack {
+  fn top(&mut self) -> *mut u8 {
+    unsafe {
+      self.ptr.offset(self.len as isize)
     }
+  }
 
-    let valgrind_id = unsafe {
-      stack_register(buf.data().offset(buf.len() as isize) as *const _,
-                     buf.data() as *const _)
-    };
-
-    Stack {
-      buf: buf,
-      valgrind_id: valgrind_id
+  fn limit(&self) -> *const u8 {
+    unsafe {
+      self.ptr.offset(env::page_size() as isize)
     }
   }
 }
 
-fn protect_last_page(stack: &MemoryMap) -> bool {
-  unsafe {
-    let last_page = stack.data() as *mut libc::c_void;
-    libc::mprotect(last_page, page_size() as libc::size_t,
-                   libc::PROT_NONE) != -1
+impl Stack {
+  pub fn new(size: usize) -> Stack {
+    let page_size = env::page_size();
+
+    // round the page size up,
+    // using the fact that it is a power of two
+    let len = (size + page_size - 1) & !(page_size - 1);
+
+    const STACK_PROT: libc::c_int = libc::PROT_READ | libc::PROT_WRITE;
+    const STACK_FLAGS: libc::c_int = libc::MAP_STACK
+                                   | libc::MAP_PRIVATE
+                                   | libc::MAP_ANON;
+
+    let stack = unsafe {
+      let ptr = libc::mmap(ptr::null_mut(), len as size_t,
+                           STACK_PROT, STACK_FLAGS, -1, 0);
+
+      if ptr == libc::MAP_FAILED {
+        panic!("mmap for stack of size {} failed: {:?}",
+               len, IoError::last_os_error())
+      }
+
+      let valgrind_id = stack_register(ptr.offset(len as isize), ptr);
+
+      Stack { ptr: ptr as *mut u8, len: len, valgrind_id: valgrind_id }
+    };
+
+    stack.protect();
+
+    stack
+  }
+
+  fn protect(&self) {
+    unsafe {
+      if libc::mprotect(self.ptr as *mut c_void,
+                        env::page_size() as libc::size_t,
+                        libc::PROT_NONE) != 0 {
+        panic!("mprotect for guard page of stack {:p} failed: {:?}",
+               self.ptr, IoError::last_os_error());
+      }
+    }
   }
 }
 
@@ -60,20 +84,10 @@ impl Drop for Stack {
   fn drop(&mut self) {
     unsafe {
       stack_deregister(self.valgrind_id);
-    }
-  }
-}
-
-impl stack::Stack for Stack {
-  fn top(&mut self) -> *mut u8 {
-    unsafe {
-      self.buf.data().offset(self.buf.len() as isize)
-    }
-  }
-
-  fn limit(&self) -> *const u8 {
-    unsafe {
-      self.buf.data().offset(page_size() as isize) as *const _
+      if libc::munmap(self.ptr as *mut c_void, self.len as size_t) != 0 {
+        panic!("munmap for stack {:p} of size {} failed: {:?}",
+               self.ptr, self.len, IoError::last_os_error())
+      }
     }
   }
 }
