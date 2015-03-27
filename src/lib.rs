@@ -1,6 +1,6 @@
 #![feature(no_std)]
 #![feature(asm, core)]
-#![feature(os, libc, page_size)]
+#![feature(libc, page_size)]
 #![no_std]
 
 #[macro_use]
