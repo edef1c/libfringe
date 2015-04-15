@@ -20,4 +20,4 @@ pub mod context;
 pub mod stack;
 
 mod arch;
-mod os;
+pub mod os;
