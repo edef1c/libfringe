@@ -20,4 +20,6 @@ pub mod context;
 pub mod stack;
 
 mod arch;
+
+#[cfg(feature = "os")]
 pub mod os;
