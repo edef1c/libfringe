@@ -3,7 +3,7 @@ extern crate lwkt;
 use lwkt::{Context, StackSource};
 
 #[thread_local]
-static mut ctx_slot: *mut Context = 0 as *mut Context;
+static mut ctx_slot: *mut Context<lwkt::os::Stack> = 0 as *mut Context<_>;
 
 fn main() {
   unsafe {
