@@ -8,11 +8,11 @@ use stack::Stack;
 #[allow(non_camel_case_types)]
 pub type uintptr_t = u64;
 
+#[allow(raw_pointer_derive)]
+#[derive(Copy, Clone)]
 pub struct Registers {
   rsp: *mut uintptr_t
 }
-
-impl Copy for Registers {}
 
 #[inline(always)]
 pub unsafe fn swap(regs: &mut Registers) {
