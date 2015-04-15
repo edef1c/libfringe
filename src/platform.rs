@@ -22,6 +22,15 @@ pub struct Stack {
   valgrind_id: libc::c_uint
 }
 
+pub struct StackSource;
+
+impl stack::StackSource for StackSource {
+  type Output = Stack;
+  fn get_stack(size: usize) -> Stack {
+    Stack::new(size)
+  }
+}
+
 impl stack::Stack for Stack {
   fn top(&mut self) -> *mut u8 {
     unsafe {
@@ -37,7 +46,7 @@ impl stack::Stack for Stack {
 }
 
 impl Stack {
-  pub fn new(size: usize) -> Stack {
+  fn new(size: usize) -> Stack {
     let page_size = env::page_size();
 
     // round the page size up,

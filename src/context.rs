@@ -1,5 +1,5 @@
 use core::prelude::*;
-use platform::Stack;
+use stack::StackSource;
 use arch::Registers;
 use platform;
 
@@ -11,7 +11,7 @@ pub struct Context {
 impl Context {
   #[inline]
   pub unsafe fn new<F>(f: F) -> Context where F: FnOnce() + Send + 'static {
-    let mut stack = Stack::new(4 << 20);
+    let mut stack = platform::StackSource::get_stack(4 << 20);
     let regs = Registers::new(&mut stack, f);
     Context {
       regs: regs,
