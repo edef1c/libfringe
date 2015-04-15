@@ -1,14 +1,16 @@
 #![feature(test)]
 extern crate test;
 extern crate lwkt;
-use lwkt::Context;
+use lwkt::{Context, StackSource};
 
 static mut ctx_slot: *mut Context = 0 as *mut Context;
 
 #[bench]
 fn context_new(b: &mut test::Bencher) {
   b.iter(|| unsafe {
-    let mut ctx = Context::new(move || {
+    let stack = lwkt::os::StackSource::get_stack(4 << 20);
+
+    let mut ctx = Context::new(stack, move || {
       let ctx_ptr = ctx_slot;
       loop {
         (*ctx_ptr).swap()
