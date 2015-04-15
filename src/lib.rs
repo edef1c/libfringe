@@ -19,6 +19,7 @@ mod std { pub use core::*; }
 pub mod context;
 pub mod stack;
 
+#[cfg(target_arch = "x86_64")]
 mod arch;
 
 #[cfg(feature = "os")]
