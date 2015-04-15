@@ -1,6 +1,6 @@
 use core::prelude::*;
 use platform::Stack;
-use arch::{self, Registers};
+use arch::Registers;
 use platform;
 
 pub struct Context {
@@ -12,7 +12,7 @@ impl Context {
   #[inline]
   pub unsafe fn new<F>(f: F) -> Context where F: FnOnce() + Send + 'static {
     let mut stack = Stack::new(4 << 20);
-    let regs = arch::initialize_call_frame(&mut stack, f);
+    let regs = Registers::new(&mut stack, f);
     Context {
       regs: regs,
       _stack: stack
@@ -21,6 +21,6 @@ impl Context {
 
   #[inline(always)]
   pub unsafe fn swap(&mut self) {
-    arch::swap(&mut self.regs)
+    self.regs.swap()
   }
 }
