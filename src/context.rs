@@ -1,15 +1,16 @@
 use core::prelude::*;
 use arch::Registers;
-use os;
+use stack;
 
-pub struct Context {
+pub struct Context<Stack: stack::Stack> {
   regs: Registers,
-  _stack: os::Stack
+  _stack: Stack
 }
 
-impl Context {
+impl<Stack> Context<Stack> where Stack: stack::Stack {
   #[inline]
-  pub unsafe fn new<F>(mut stack: os::Stack, f: F) -> Context where F: FnOnce() + Send + 'static {
+  pub unsafe fn new<F>(mut stack: Stack, f: F) -> Context<Stack>
+    where F: FnOnce() + Send + 'static {
     let regs = Registers::new(&mut stack, f);
     Context {
       regs: regs,
