@@ -7,8 +7,6 @@ use super::common::{push, rust_trampoline};
 
 pub const STACK_ALIGN: usize = 16;
 
-#[allow(raw_pointer_derive)]
-#[derive(Copy, Clone)]
 pub struct Registers {
   rsp: *mut usize
 }
