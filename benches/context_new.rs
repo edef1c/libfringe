@@ -3,7 +3,7 @@ extern crate test;
 extern crate lwkt;
 use lwkt::{Context, Stack};
 
-static mut ctx_slot: *mut Context<SliceStack<'static>> = 0 as *mut Context<_>;
+static mut ctx_slot: *mut Context<'static, SliceStack<'static>> = 0 as *mut Context<_>;
 static mut stack_buf: [u8; 1024] = [0; 1024];
 
 #[bench]

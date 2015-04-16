@@ -1,24 +1,27 @@
 use core::prelude::*;
+use core::marker::PhantomData;
 use arch::Registers;
 use stack;
 use debug::StackId;
 
-pub struct Context<Stack: stack::Stack> {
+pub struct Context<'a, Stack: stack::Stack> {
   regs: Registers,
   _stack_id: StackId,
-  stack: Stack
+  stack: Stack,
+  _ref: PhantomData<&'a ()>
 }
 
-impl<Stack> Context<Stack> where Stack: stack::Stack {
+impl<'a, Stack> Context<'a, Stack> where Stack: stack::Stack {
   #[inline]
-  pub unsafe fn new<F>(mut stack: Stack, f: F) -> Context<Stack>
-    where F: FnOnce() + Send + 'static {
+  pub unsafe fn new<F>(mut stack: Stack, f: F) -> Context<'a, Stack>
+    where F: FnOnce() + Send + 'a {
     let stack_id = StackId::register(&mut stack);
     let regs = Registers::new(&mut stack, f);
     Context {
       regs: regs,
       _stack_id: stack_id,
-      stack: stack
+      stack: stack,
+      _ref: PhantomData
     }
   }
 
