@@ -5,7 +5,7 @@ use core::mem::{size_of, align_of};
 use core::cmp::max;
 use core::ptr;
 
-use super::STACK_ALIGN;
+use super::imp::STACK_ALIGN;
 
 pub unsafe extern "C" fn rust_trampoline<F: FnOnce()>(f: *const F) {
   ptr::read(f)()
