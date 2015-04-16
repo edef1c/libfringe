@@ -1,5 +1,10 @@
 // Copyright (c) 2015, edef <edef@edef.eu>
 // See the LICENSE file included in this distribution.
+//! This module provides stacks using the operating system's
+//! anonymous memory mapping facility, usually `mmap`.
+//! The stacks it provides come with a guard page, which is not included
+//! in the stack limit.
+
 extern crate std;
 use core::prelude::*;
 use self::std::io::Error as IoError;
