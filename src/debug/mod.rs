@@ -5,6 +5,7 @@ use stack;
 
 mod valgrind;
 
+#[derive(Debug)]
 pub struct StackId(valgrind::stack_id_t);
 
 impl StackId {
