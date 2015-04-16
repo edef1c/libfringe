@@ -1,3 +1,4 @@
+libfringe, a low-level green threading library.
 Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
 
 Permission to use, copy, modify, and/or distribute this software for any 
