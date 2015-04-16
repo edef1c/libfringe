@@ -6,6 +6,7 @@ use arch::Registers;
 use stack;
 use debug::StackId;
 
+#[derive(Debug)]
 pub struct Context<'a, Stack: stack::Stack> {
   regs: Registers,
   _stack_id: StackId,
