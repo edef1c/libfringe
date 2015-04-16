@@ -6,6 +6,9 @@
 #![feature(libc)]
 #![no_std]
 
+//! libfringe is a low-level green threading library.
+//! It provides only a context-swapping mechanism.
+
 #[macro_use]
 extern crate core;
 

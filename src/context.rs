@@ -7,6 +7,13 @@ use arch::Registers;
 use stack;
 use debug::StackId;
 
+/// Context is the heart of libfringe.
+/// A context represents a saved thread of execution, along with a stack.
+/// It can be swapped into and out of with the swap method,
+/// and once you're done with it, you can get the stack back through unwrap.
+///
+/// Every operation is unsafe, because libfringe can't make any guarantees
+/// about the state of the context.
 #[derive(Debug)]
 pub struct Context<'a, Stack: stack::Stack> {
   regs: Registers,
@@ -19,6 +26,9 @@ unsafe impl<'a, Stack> Send for Context<'a, Stack>
   where Stack: stack::Stack + Send {}
 
 impl<'a, Stack> Context<'a, Stack> where Stack: stack::Stack {
+  /// Create a new Context. When it is swapped into,
+  /// it will call the passed closure.
+  /// The closure shouldn't return - doing that will abort the process.
   #[inline]
   pub unsafe fn new<F>(mut stack: Stack, f: F) -> Context<'a, Stack>
     where F: FnOnce() + Send + 'a {
@@ -32,11 +42,13 @@ impl<'a, Stack> Context<'a, Stack> where Stack: stack::Stack {
     }
   }
 
+  /// Switch to the context, saving the current thread of execution there.
   #[inline(always)]
   pub unsafe fn swap(&mut self) {
     self.regs.swap()
   }
 
+  /// Unwrap the context, returning the stack it contained.
   #[inline]
   pub unsafe fn unwrap(self) -> Stack {
     self.stack
