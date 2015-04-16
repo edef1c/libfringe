@@ -18,8 +18,8 @@ pub use stack::{Stack, StackSource};
 #[cfg(not(test))]
 mod std { pub use core::*; }
 
-pub mod context;
-pub mod stack;
+mod context;
+mod stack;
 
 mod debug;
 
