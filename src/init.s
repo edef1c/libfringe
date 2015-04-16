@@ -1,5 +1,5 @@
 // Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
-// See LICENSE file that comes with this distribution.
+// See the LICENSE file included in this distribution.
 
 //! initialise a new context
 //! arguments:

@@ -1,3 +1,5 @@
+// Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
+// See the LICENSE file included in this distribution.
 #![feature(test)]
 extern crate test;
 extern crate lwkt;
