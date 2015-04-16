@@ -4,7 +4,7 @@ install:
 script: 
   - cargo test
   - cargo bench
-  - cargo doc
+  - cargo doc --no-deps
 after_success: |
   echo '<meta http-equiv="refresh" content="0;url=fringe/">' > target/doc/index.html &&\
   ghp-import -n target/doc &&\
