@@ -8,12 +8,17 @@ mod sys;
 
 pub struct StackSource;
 
+unsafe impl Send for StackSource {}
+unsafe impl Sync for StackSource {}
+
 #[allow(raw_pointer_derive)]
 #[derive(Debug)]
 pub struct Stack {
   ptr: *mut u8,
   len: usize
 }
+
+unsafe impl Send for Stack {}
 
 impl stack::StackSource for StackSource {
   type Output = Stack;
