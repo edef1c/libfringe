@@ -1,8 +1,8 @@
 extern crate libc;
 use core::prelude::*;
-pub use self::libc::{c_void, c_int, size_t};
-pub use self::libc::{mmap, mprotect, munmap};
-pub use self::libc::MAP_FAILED;
+use self::libc::{c_void, c_int, size_t};
+use self::libc::{mmap, mprotect, munmap};
+use self::libc::MAP_FAILED;
 
 use core::ptr;
 
@@ -12,12 +12,12 @@ pub fn page_size() -> usize {
   }
 }
 
-pub const GUARD_PROT:  c_int = libc::PROT_NONE;
-pub const STACK_PROT:  c_int = libc::PROT_READ
-                             | libc::PROT_WRITE;
-pub const STACK_FLAGS: c_int = libc::MAP_STACK
-                             | libc::MAP_PRIVATE
-                             | libc::MAP_ANON;
+const GUARD_PROT:  c_int = libc::PROT_NONE;
+const STACK_PROT:  c_int = libc::PROT_READ
+                         | libc::PROT_WRITE;
+const STACK_FLAGS: c_int = libc::MAP_STACK
+                         | libc::MAP_PRIVATE
+                         | libc::MAP_ANON;
 
 pub unsafe fn map_stack(len: usize) -> Option<*mut u8> {
   let ptr = mmap(ptr::null_mut(), len as size_t,
