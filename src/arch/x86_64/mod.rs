@@ -7,20 +7,17 @@ use core::ptr;
 
 use stack::Stack;
 
-#[allow(non_camel_case_types)]
-pub type uintptr_t = u64;
-
 #[allow(raw_pointer_derive)]
 #[derive(Copy, Clone)]
 pub struct Registers {
-  rsp: *mut uintptr_t
+  rsp: *mut usize
 }
 
 impl Registers {
   #[inline]
   pub unsafe fn new<S, F>(stack: &mut S, f: F) -> Registers where S: Stack, F: FnOnce() {
     let sp_limit = stack.limit();
-    let mut sp = stack.top() as *mut uintptr_t;
+    let mut sp = stack.top() as *mut usize;
     let f_ptr = push(&mut sp, f);
 
     asm!(include_str!("init.s")
@@ -55,12 +52,12 @@ unsafe extern "C" fn rust_trampoline<F: FnOnce()>(f: *const F) {
   ptr::read(f)()
 }
 
-unsafe fn push<T>(spp: &mut *mut uintptr_t, value: T) -> *mut T {
+unsafe fn push<T>(spp: &mut *mut usize, value: T) -> *mut T {
   let mut sp = *spp as *mut T;
   sp = offset_mut(sp, -1);
   sp = align_down_mut(sp, max(align_of::<T>(), 16));
   *sp = value;
-  *spp = sp as *mut uintptr_t;
+  *spp = sp as *mut usize;
   sp
 }
 
