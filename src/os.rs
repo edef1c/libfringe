@@ -2,9 +2,7 @@ extern crate std;
 use core::prelude::*;
 use self::std::io::Error as IoError;
 use stack;
-
-#[cfg(unix)]
-#[path = "os/unix.rs"] mod sys;
+use sys;
 
 pub struct StackSource;
 
