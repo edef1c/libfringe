@@ -62,8 +62,8 @@ impl Stack {
       }
 
       let valgrind_id =
-        valgrind::stack_register(ptr.offset(len as isize) as *const _,
-                                 ptr as *const _);
+        valgrind::stack_register(ptr as *const _,
+                                 ptr.offset(len as isize) as *const _);
 
       Stack { ptr: ptr as *mut u8, len: len, valgrind_id: valgrind_id }
     };
