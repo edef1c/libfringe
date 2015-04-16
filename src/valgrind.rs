@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 //! In order for Valgrind to keep track of stack overflows and such, it needs
-//! a little help. That help unfortunately comes in the form of a pair of C
+//! a little help. That help unfortunately comes in the form of a set of C
 //! macros. Calling out to un-inlineable C code for this is pointlessly slow,
 //! but that's the way it is for now.
 
@@ -9,8 +9,13 @@ extern "C" {
   #[link_name = "valgrind_stack_register"]
   /// Register a stack with Valgrind. Returns an integer ID that can
   /// be used to deregister the stack when it's deallocated.
-  /// `start < end`, though Valgrind will happily accept either.
+  /// `start < end`.
   pub fn stack_register(start: *const u8, end: *const u8) -> stack_id_t;
+
+  #[link_name = "valgrind_stack_change"]
+  /// Change the size or location of a stack registered with Valgrind.
+  /// `start < end`.
+  pub fn stack_change(id: stack_id_t, start: *const u8, end: *const u8) -> stack_id_t;
 
   #[link_name = "valgrind_stack_deregister"]
   /// Deregister a stack from Valgrind. Takes the integer ID that was returned
