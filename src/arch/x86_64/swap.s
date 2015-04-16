@@ -36,8 +36,9 @@ jmp 2f
   movq %rax, %rsp
 
   // jump into the new context (return to the call point)
-  // doing this instead of a straight `ret` is 8ns slower,
-  // presumably because the branch predictor tries to be clever about it
+  // doing this instead of a straight `ret` is 8ns faster,
+  // presumably because the branch predictor tries
+  // to be clever about it otherwise
   popq %rax
   jmpq *%rax
 
