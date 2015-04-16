@@ -2,6 +2,7 @@
 // Copyright (c) 2015, edef <edef@edef.eu>
 // See the LICENSE file included in this distribution.
 #![feature(test)]
+#![cfg(feature = "os")]
 extern crate test;
 extern crate fringe;
 use fringe::Context;
