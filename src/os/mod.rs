@@ -11,6 +11,7 @@ use self::std::io::Error as IoError;
 use stack;
 mod sys;
 
+#[derive(Copy, Clone)]
 pub struct StackSource;
 
 unsafe impl Send for StackSource {}
