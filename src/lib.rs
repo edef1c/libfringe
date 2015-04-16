@@ -23,7 +23,6 @@ pub mod stack;
 
 mod debug;
 
-#[cfg(target_arch = "x86_64")]
 mod arch;
 
 #[cfg(feature = "os")]
