@@ -4,7 +4,7 @@ extern crate std;
 use core::prelude::*;
 use self::std::io::Error as IoError;
 use stack;
-use sys;
+mod sys;
 
 pub struct StackSource;
 
