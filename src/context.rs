@@ -4,7 +4,7 @@ use stack;
 
 pub struct Context<Stack: stack::Stack> {
   regs: Registers,
-  _stack: Stack
+  stack: Stack
 }
 
 impl<Stack> Context<Stack> where Stack: stack::Stack {
@@ -14,12 +14,16 @@ impl<Stack> Context<Stack> where Stack: stack::Stack {
     let regs = Registers::new(&mut stack, f);
     Context {
       regs: regs,
-      _stack: stack
+      stack: stack
     }
   }
 
   #[inline(always)]
   pub unsafe fn swap(&mut self) {
     self.regs.swap()
+  }
+
+  pub unsafe fn destroy(self) -> Stack {
+    self.stack
   }
 }
