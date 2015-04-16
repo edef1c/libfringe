@@ -13,7 +13,7 @@ extern crate core;
 extern crate std;
 
 pub use context::Context;
-pub use stack::{Stack, StackSource};
+pub use stack::Stack;
 
 #[cfg(not(test))]
 mod std { pub use core::*; }
