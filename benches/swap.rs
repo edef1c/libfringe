@@ -5,12 +5,12 @@ extern crate test;
 extern crate lwkt;
 use lwkt::Context;
 
-static mut ctx_slot: *mut Context<'static, lwkt::os::Stack> = 0 as *mut Context<_>;
+static mut ctx_slot: *mut Context<'static, lwkt::OsStack> = 0 as *mut Context<_>;
 
 #[bench]
 fn swap(b: &mut test::Bencher) {
   unsafe {
-    let stack = lwkt::os::Stack::new(4 << 20).unwrap();
+    let stack = lwkt::OsStack::new(4 << 20).unwrap();
 
     let mut ctx = Context::new(stack, move || {
       let ctx_ptr = ctx_slot;

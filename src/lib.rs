@@ -14,6 +14,8 @@ extern crate std;
 
 pub use context::Context;
 pub use stack::Stack;
+#[cfg(feature = "os")]
+pub use os::Stack as OsStack;
 
 #[cfg(not(test))]
 mod std { pub use core::*; }
@@ -26,4 +28,4 @@ mod debug;
 mod arch;
 
 #[cfg(feature = "os")]
-pub mod os;
+mod os;
