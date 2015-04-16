@@ -1,7 +1,7 @@
 // Copyright (c) 2015, edef <edef@edef.eu>
 // See the LICENSE file included in this distribution.
 use core::prelude::*;
-pub use self::imp::{Registers, STACK_ALIGN};
+pub use self::imp::Registers;
 
 unsafe impl Send for Registers {}
 
