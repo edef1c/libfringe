@@ -2,6 +2,7 @@
 // See the LICENSE file included in this distribution.
 //! Traits for stacks.
 use core::prelude::*;
+use core::fmt::{Debug, Display};
 
 /// A trait for objects that hold ownership of a stack.
 pub trait Stack {
@@ -18,6 +19,6 @@ pub trait Stack {
 /// A trait for objects that provide stacks of arbitrary size.
 pub trait StackSource {
   type Output: Stack;
-  type Error = ();
+  type Error: Debug + Display = ();
   fn get_stack(size: usize) -> Result<Self::Output, Self::Error>;
 }
