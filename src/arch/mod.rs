@@ -11,3 +11,7 @@ mod common;
 #[cfg(target_arch = "x86_64")]
 #[path = "x86_64/mod.rs"]
 mod imp;
+
+#[cfg(target_arch = "x86")]
+#[path = "x86/mod.rs"]
+mod imp;

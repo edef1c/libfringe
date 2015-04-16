@@ -6,6 +6,7 @@
 extern crate test;
 use test::Bencher;
 
+#[cfg(target_arch = "x86_64")]
 #[bench]
 fn kernel_swap(b: &mut Bencher) {
   b.iter(|| unsafe {
@@ -14,6 +15,19 @@ fn kernel_swap(b: &mut Bencher) {
          :
          :
          : "rax", "rcx"
+         : "volatile");
+  });
+}
+
+#[cfg(target_arch = "x86")]
+#[bench]
+fn kernel_swap(b: &mut Bencher) {
+  b.iter(|| unsafe {
+    asm!("mov $$24, %eax\n\
+          int $$0x80"
+         :
+         :
+         : "eax"
          : "volatile");
   });
 }
