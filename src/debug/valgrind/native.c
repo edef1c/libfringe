@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "valgrind/valgrind.h"
+#include "valgrind.h"
 
 typedef uint32_t valgrind_stack_id_t;
 
