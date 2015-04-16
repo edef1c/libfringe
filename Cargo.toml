@@ -8,5 +8,6 @@ build = "build.rs"
 gcc = "0.3.3"
 
 [features]
-default = ["os"]
+default = ["os", "valgrind"]
 os = []
+valgrind = []

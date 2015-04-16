@@ -1,5 +1,8 @@
 extern crate gcc;
+use std::env::var_os;
 
 fn main() {
-  gcc::compile_library("libvalgrind.a", &["src/debug/valgrind.c"]);
+  if var_os("CARGO_FEATURE_VALGRIND").is_some() {
+    gcc::compile_library("libvalgrind.a", &["src/debug/valgrind/native.c"]);
+  }
 }
