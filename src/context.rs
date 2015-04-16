@@ -13,6 +13,9 @@ pub struct Context<'a, Stack: stack::Stack> {
   _ref: PhantomData<&'a ()>
 }
 
+unsafe impl<'a, Stack> Send for Context<'a, Stack>
+  where Stack: stack::Stack + Send {}
+
 impl<'a, Stack> Context<'a, Stack> where Stack: stack::Stack {
   #[inline]
   pub unsafe fn new<F>(mut stack: Stack, f: F) -> Context<'a, Stack>
