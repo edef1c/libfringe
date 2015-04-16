@@ -49,7 +49,7 @@ impl Stack {
     let stack = unsafe {
       let ptr = match sys::map_stack(size) {
         None => {
-          panic!("mmap for stack of size {} failed: {:?}",
+          panic!("mmap for stack of size {} failed: {}",
                  len, IoError::last_os_error())
         }
         Some(ptr) => ptr
@@ -64,7 +64,7 @@ impl Stack {
 
     unsafe {
       if !sys::protect_stack(stack.ptr) {
-        panic!("mprotect for guard page of stack {:p} failed: {:?}",
+        panic!("mprotect for guard page of stack {:p} failed: {}",
                stack.ptr, IoError::last_os_error());
       }
     }
@@ -78,7 +78,7 @@ impl Drop for Stack {
     unsafe {
       valgrind::stack_deregister(self.valgrind_id);
       if !sys::unmap_stack(self.ptr, self.len) {
-        panic!("munmap for stack {:p} of size {} failed: {:?}",
+        panic!("munmap for stack {:p} of size {} failed: {}",
                self.ptr, self.len, IoError::last_os_error())
       }
     }
