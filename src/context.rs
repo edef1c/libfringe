@@ -32,6 +32,7 @@ impl<'a, Stack> Context<'a, Stack> where Stack: stack::Stack {
     self.regs.swap()
   }
 
+  #[inline]
   pub unsafe fn destroy(self) -> Stack {
     self.stack
   }
