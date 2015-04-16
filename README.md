@@ -28,7 +28,7 @@ test swap ... bench:         5 ns/iter (+/- 1)
 
 ## Limitations
 
-  libfringe currently doesn't work on anything but x86_64,
+  libfringe currently doesn't work on anything but x86 and x86_64,
   and is untested on anything but Linux.
 
 ## Installation
