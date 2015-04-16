@@ -7,11 +7,13 @@ use self::libc::{c_void, size_t};
 use core::ptr;
 use stack;
 
+#[allow(non_camel_case_types)]
+type stack_id_t = u32;
 extern "C" {
   #[link_name = "lwt_stack_register"]
-  fn stack_register(start: *const c_void, end: *const c_void) -> libc::c_uint;
+  fn stack_register(start: *const u8, end: *const u8) -> stack_id_t;
   #[link_name = "lwt_stack_deregister"]
-  fn stack_deregister(id: libc::c_uint);
+  fn stack_deregister(id: stack_id_t);
 }
 
 #[allow(raw_pointer_derive)]
@@ -19,7 +21,7 @@ extern "C" {
 pub struct Stack {
   ptr: *mut u8,
   len: usize,
-  valgrind_id: libc::c_uint
+  valgrind_id: stack_id_t
 }
 
 pub struct StackSource;
@@ -67,7 +69,8 @@ impl Stack {
                len, IoError::last_os_error())
       }
 
-      let valgrind_id = stack_register(ptr.offset(len as isize), ptr);
+      let valgrind_id = stack_register(ptr.offset(len as isize) as *const _,
+                                       ptr as *const _);
 
       Stack { ptr: ptr as *mut u8, len: len, valgrind_id: valgrind_id }
     };
