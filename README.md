@@ -15,9 +15,15 @@
 
 ## Performance
 
-  libfringe does context switches in 3.5ns flat!
+  libfringe does context switches in 3.5ns flat on x86_64!
 ```
 test swap ... bench:         7 ns/iter (+/- 0)
+```
+
+  …and on x86, a mere 2.5ns!
+
+```
+test swap ... bench:         5 ns/iter (+/- 1)
 ```
 
 ## Limitations
