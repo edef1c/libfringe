@@ -1,12 +1,9 @@
 language: rust
 install:
-  - sudo pip install ghp-import
+  - .travis/docs/install
 script: 
   - cargo test
   - cargo bench
   - cargo doc --no-deps
-after_success: |
-  echo '<meta http-equiv="refresh" content="0;url=fringe/">' > target/doc/index.html &&\
-  ghp-import -n target/doc &&\
-  git remote set-url origin https://${TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git &&\
-  git push -f origin gh-pages
+after_success:
+  - .travis/docs/after_success

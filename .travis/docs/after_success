@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+
+if [ "$TRAVIS_PULL_REQUEST" = false ] && [ "$TRAVIS_BRANCH" = master ]; then
+  echo '<meta http-equiv="refresh" content="0;url=fringe/">' > target/doc/index.html
+  ghp-import -n target/doc
+  git remote set-url origin "https://${TOKEN}@github.com/${TRAVIS_REPO_SLUG}"
+  git push -f origin gh-pages
+fi
