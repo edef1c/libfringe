@@ -1,3 +1,5 @@
+// Copyright (c) 2015, edef <edef@edef.eu>
+// See the LICENSE file included in this distribution.
 extern crate gcc;
 use std::env::var_os;
 

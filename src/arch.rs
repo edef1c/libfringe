@@ -1,3 +1,5 @@
+// Copyright (c) 2015, edef <edef@edef.eu>
+// See the LICENSE file included in this distribution.
 use core::prelude::*;
 use core::mem::{size_of, align_of};
 use core::cmp::max;

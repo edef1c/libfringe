@@ -1,3 +1,5 @@
+// Copyright (c) 2015, edef <edef@edef.eu>
+// See the LICENSE file included in this distribution.
 pub use self::imp::*;
 
 #[cfg(feature = "valgrind")]

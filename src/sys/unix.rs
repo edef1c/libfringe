@@ -1,3 +1,5 @@
+// Copyright (c) 2015, edef <edef@edef.eu>
+// See the LICENSE file included in this distribution.
 extern crate libc;
 use core::prelude::*;
 use self::libc::{c_void, c_int, size_t};

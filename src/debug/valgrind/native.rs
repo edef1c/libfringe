@@ -1,3 +1,5 @@
+// Copyright (c) 2015, edef <edef@edef.eu>
+// See the LICENSE file included in this distribution.
 #![allow(non_camel_case_types)]
 //! In order for Valgrind to keep track of stack overflows and such, it needs
 //! a little help. That help unfortunately comes in the form of a set of C

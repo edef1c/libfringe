@@ -1,5 +1,5 @@
 // Copyright (c) 2015, edef <edef@edef.eu>
-// See LICENSE file that comes with this distribution.
+// See the LICENSE file included in this distribution.
 
 //! switch to a new context
 //! arguments:
