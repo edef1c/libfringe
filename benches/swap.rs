@@ -8,7 +8,7 @@ static mut ctx_slot: *mut Context<'static, lwkt::os::Stack> = 0 as *mut Context<
 #[bench]
 fn swap(b: &mut test::Bencher) {
   unsafe {
-    let stack = lwkt::os::StackSource::get_stack(4 << 20);
+    let stack = lwkt::os::StackSource::get_stack(4 << 20).unwrap();
 
     let mut ctx = Context::new(stack, move || {
       let ctx_ptr = ctx_slot;
