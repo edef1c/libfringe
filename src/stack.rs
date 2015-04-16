@@ -20,5 +20,5 @@ pub trait Stack {
 pub trait StackSource {
   type Output: Stack;
   type Error: Debug + Display = ();
-  fn get_stack(size: usize) -> Result<Self::Output, Self::Error>;
+  fn get_stack(&mut self, size: usize) -> Result<Self::Output, Self::Error>;
 }
