@@ -1,11 +1,11 @@
 // Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
 // See the LICENSE file included in this distribution.
 use core::prelude::*;
-use core::mem::{size_of, align_of};
-use core::cmp::max;
-use core::ptr;
 
 use stack::Stack;
+use super::common::{push, rust_trampoline};
+
+pub const STACK_ALIGN: usize = 16;
 
 #[allow(raw_pointer_derive)]
 #[derive(Copy, Clone)]
@@ -46,27 +46,4 @@ impl Registers {
             "cc"
           : "volatile");
   }
-}
-
-unsafe extern "C" fn rust_trampoline<F: FnOnce()>(f: *const F) {
-  ptr::read(f)()
-}
-
-unsafe fn push<T>(spp: &mut *mut usize, value: T) -> *mut T {
-  let mut sp = *spp as *mut T;
-  sp = offset_mut(sp, -1);
-  sp = align_down_mut(sp, max(align_of::<T>(), 16));
-  *sp = value;
-  *spp = sp as *mut usize;
-  sp
-}
-
-fn align_down_mut<T>(sp: *mut T, n: usize) -> *mut T {
-  let sp = (sp as usize) & !(n - 1);
-  sp as *mut T
-}
-
-// ptr::offset_mut is positive ints only
-pub fn offset_mut<T>(ptr: *mut T, count: isize) -> *mut T {
-  (ptr as isize + count * (size_of::<T>() as isize)) as *mut T
 }
