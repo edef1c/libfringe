@@ -1,13 +1,16 @@
+// This file is part of libfringe, a low-level green threading library.
+// Copyright (c) 2015, edef <edef@edef.eu>
+// See the LICENSE file included in this distribution.
 #![feature(thread_local)]
-extern crate lwkt;
-use lwkt::Context;
+extern crate fringe;
+use fringe::Context;
 
 #[thread_local]
-static mut ctx_slot: *mut Context<'static, lwkt::OsStack> = 0 as *mut Context<_>;
+static mut ctx_slot: *mut Context<'static, fringe::OsStack> = 0 as *mut Context<_>;
 
 fn main() {
   unsafe {
-    let stack = lwkt::OsStack::new(4 << 20).unwrap();
+    let stack = fringe::OsStack::new(4 << 20).unwrap();
 
     let mut ctx = Context::new(stack, move || {
       println!("it's alive!");

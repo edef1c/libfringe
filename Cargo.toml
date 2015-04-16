@@ -1,5 +1,5 @@
 [package]
-name = "lwkt"
+name = "fringe"
 version = "0.0.1"
 authors = ["edef <edef@edef.eu>"]
 build = "build.rs"
