@@ -3,10 +3,13 @@ use core::prelude::*;
 use self::libc::{c_void, c_int, size_t};
 use self::libc::{mmap, mprotect, munmap};
 use self::libc::MAP_FAILED;
+use super::page_size;
 
 use core::ptr;
 
-pub fn page_size() -> usize {
+#[cold]
+#[inline(never)]
+pub fn sys_page_size() -> usize {
   unsafe {
     libc::sysconf(libc::_SC_PAGESIZE) as usize
   }
