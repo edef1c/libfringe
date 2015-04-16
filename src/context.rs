@@ -37,7 +37,7 @@ impl<'a, Stack> Context<'a, Stack> where Stack: stack::Stack {
   }
 
   #[inline]
-  pub unsafe fn destroy(self) -> Stack {
+  pub unsafe fn unwrap(self) -> Stack {
     self.stack
   }
 }
