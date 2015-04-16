@@ -12,11 +12,6 @@ extern "C" {
   /// `start < end`.
   pub fn stack_register(start: *const u8, end: *const u8) -> stack_id_t;
 
-  #[link_name = "valgrind_stack_change"]
-  /// Change the size or location of a stack registered with Valgrind.
-  /// `start < end`.
-  pub fn stack_change(id: stack_id_t, start: *const u8, end: *const u8) -> stack_id_t;
-
   #[link_name = "valgrind_stack_deregister"]
   /// Deregister a stack from Valgrind. Takes the integer ID that was returned
   /// on registration.

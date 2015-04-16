@@ -2,7 +2,6 @@ extern crate std;
 use core::prelude::*;
 use self::std::io::Error as IoError;
 use stack;
-use valgrind;
 
 #[cfg(unix)]
 #[path = "os/unix.rs"] mod sys;
@@ -11,8 +10,7 @@ use valgrind;
 #[derive(Debug)]
 pub struct Stack {
   ptr: *mut u8,
-  len: usize,
-  valgrind_id: valgrind::stack_id_t
+  len: usize
 }
 
 pub struct StackSource;
@@ -55,11 +53,7 @@ impl Stack {
         Some(ptr) => ptr
       };
 
-      let valgrind_id =
-        valgrind::stack_register(ptr as *const _,
-                                 ptr.offset(len as isize) as *const _);
-
-      Stack { ptr: ptr as *mut u8, len: len, valgrind_id: valgrind_id }
+      Stack { ptr: ptr as *mut u8, len: len }
     };
 
     unsafe {
@@ -76,7 +70,6 @@ impl Stack {
 impl Drop for Stack {
   fn drop(&mut self) {
     unsafe {
-      valgrind::stack_deregister(self.valgrind_id);
       if !sys::unmap_stack(self.ptr, self.len) {
         panic!("munmap for stack {:p} of size {} failed: {}",
                self.ptr, self.len, IoError::last_os_error())

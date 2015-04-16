@@ -18,7 +18,8 @@ mod std { pub use core::*; }
 
 pub mod context;
 pub mod stack;
-pub mod valgrind;
+
+mod debug;
 
 #[cfg(target_arch = "x86_64")]
 mod arch;
