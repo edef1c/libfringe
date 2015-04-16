@@ -1,11 +1,15 @@
 // Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
 // See LICENSE file that comes with this distribution.
 
-/// initialise a new context
-/// arguments: rdi: stack pointer,
-///            rsi: function pointer,
-///            rdx, data pointer
-///            rcx, stack limit
+//! initialise a new context
+//! arguments:
+//!  * rdi: stack pointer
+//!  * rsi: function pointer
+//!  * rdx: data pointer
+//!  * rcx: stack limit
+//!
+//! return values:
+//!  * rdi: new stack pointer
 
 // switch to the fresh stack
 xchg %rsp, %rdi

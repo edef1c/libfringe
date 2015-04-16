@@ -1,8 +1,9 @@
 // Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
 // See LICENSE file that comes with this distribution.
 
-/// switch to a new context
-/// arguments: rdi: stack pointer pointer
+//! switch to a new context
+//! arguments:
+//!  * rdi: stack pointer pointer
 
 // make sure we leave the red zone alone
 sub $$128, %rsp
