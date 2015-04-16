@@ -8,8 +8,9 @@
 
 typedef uint32_t valgrind_stack_id_t;
 
-// Register a stack with Valgrind. start < end. Returns an integer ID that can
+// Register a stack with Valgrind. Returns an integer ID that can
 // be used to deregister the stack when it's deallocated.
+// `start < end`, though Valgrind will happily accept either.
 valgrind_stack_id_t valgrind_stack_register(const void *start, const void *end) {
   return VALGRIND_STACK_REGISTER(start, end);
 }
