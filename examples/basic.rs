@@ -3,11 +3,11 @@ extern crate lwkt;
 use lwkt::Context;
 
 #[thread_local]
-static mut ctx_slot: *mut Context<'static, lwkt::os::Stack> = 0 as *mut Context<_>;
+static mut ctx_slot: *mut Context<'static, lwkt::OsStack> = 0 as *mut Context<_>;
 
 fn main() {
   unsafe {
-    let stack = lwkt::os::Stack::new(4 << 20).unwrap();
+    let stack = lwkt::OsStack::new(4 << 20).unwrap();
 
     let mut ctx = Context::new(stack, move || {
       println!("it's alive!");
