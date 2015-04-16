@@ -30,7 +30,7 @@ impl stack::StackSource for StackSource {
   type Output = Stack;
   type Error = IoError;
 
-  fn get_stack(size: usize) -> Result<Stack, IoError> {
+  fn get_stack(&mut self, size: usize) -> Result<Stack, IoError> {
     let page_size = sys::page_size();
 
     // round the page size up,
