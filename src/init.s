@@ -1,3 +1,6 @@
+// Copyright (c) 2015, edef <edef@edef.eu>
+// See LICENSE file that comes with this distribution.
+
 /// initialise a new context
 /// arguments: rdi: stack pointer,
 ///            rsi: function pointer,
