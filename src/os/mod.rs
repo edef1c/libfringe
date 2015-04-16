@@ -11,12 +11,6 @@ use self::std::io::Error as IoError;
 use stack;
 mod sys;
 
-#[derive(Copy, Clone)]
-pub struct StackSource;
-
-unsafe impl Send for StackSource {}
-unsafe impl Sync for StackSource {}
-
 #[allow(raw_pointer_derive)]
 #[derive(Debug)]
 pub struct Stack {
@@ -26,11 +20,8 @@ pub struct Stack {
 
 unsafe impl Send for Stack {}
 
-impl stack::StackSource for StackSource {
-  type Output = Stack;
-  type Error = IoError;
-
-  fn get_stack(&mut self, size: usize) -> Result<Stack, IoError> {
+impl Stack {
+  pub fn new(size: usize) -> Result<Stack, IoError> {
     let page_size = sys::page_size();
 
     // round the page size up,
