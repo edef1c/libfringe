@@ -1,4 +1,5 @@
 //! Traits for stacks.
+use core::prelude::*;
 
 /// A trait for objects that hold ownership of a stack.
 pub trait Stack {
@@ -15,5 +16,6 @@ pub trait Stack {
 /// A trait for objects that provide stacks of arbitrary size.
 pub trait StackSource {
   type Output: Stack;
-  fn get_stack(size: usize) -> Self::Output;
+  type Error = ();
+  fn get_stack(size: usize) -> Result<Self::Output, Self::Error>;
 }

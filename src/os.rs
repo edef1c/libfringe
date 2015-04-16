@@ -17,7 +17,9 @@ pub struct StackSource;
 
 impl stack::StackSource for StackSource {
   type Output = Stack;
-  fn get_stack(size: usize) -> Stack {
+  type Error = IoError;
+
+  fn get_stack(size: usize) -> Result<Stack, IoError> {
     Stack::new(size)
   }
 }
@@ -37,7 +39,7 @@ impl stack::Stack for Stack {
 }
 
 impl Stack {
-  fn new(size: usize) -> Stack {
+  fn new(size: usize) -> Result<Stack, IoError> {
     let page_size = sys::page_size();
 
     // round the page size up,
@@ -45,25 +47,20 @@ impl Stack {
     let len = (size + page_size - 1) & !(page_size - 1);
 
     let stack = unsafe {
-      let ptr = match sys::map_stack(size) {
-        None => {
-          panic!("mmap for stack of size {} failed: {}",
-                 len, IoError::last_os_error())
-        }
-        Some(ptr) => ptr
-      };
+      let ptr = try!(match sys::map_stack(size) {
+        None => Err(IoError::last_os_error()),
+        Some(ptr) => Ok(ptr)
+      });
 
       Stack { ptr: ptr as *mut u8, len: len }
     };
 
-    unsafe {
-      if !sys::protect_stack(stack.ptr) {
-        panic!("mprotect for guard page of stack {:p} failed: {}",
-               stack.ptr, IoError::last_os_error());
-      }
-    }
+    try!(unsafe {
+      if sys::protect_stack(stack.ptr) { Ok(()) }
+      else { Err(IoError::last_os_error()) }
+    });
 
-    stack
+    Ok(stack)
   }
 }
 
