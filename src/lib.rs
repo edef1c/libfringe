@@ -26,3 +26,5 @@ mod arch;
 
 #[cfg(feature = "os")]
 pub mod os;
+#[cfg(feature = "os")]
+mod sys;
