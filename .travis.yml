@@ -1,4 +1,5 @@
 language: rust
+sudo: false
 install:
   - .travis/docs/install
 script: 

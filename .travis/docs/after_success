@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+export PATH="$HOME/.local/bin:$PATH"
 
 if [ "$TRAVIS_PULL_REQUEST" = false ] && [ "$TRAVIS_BRANCH" = master ]; then
   echo '<meta http-equiv="refresh" content="0;url=fringe/">' > target/doc/index.html
