@@ -2,5 +2,5 @@
 set -e
 
 if [ "$TRAVIS_PULL_REQUEST" = false ] && [ "$TRAVIS_BRANCH" = master ]; then
-  sudo pip install ghp-import
+  pip install --user ghp-import
 fi
