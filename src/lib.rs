@@ -3,7 +3,6 @@
 // See the LICENSE file included in this distribution.
 #![feature(no_std)]
 #![feature(asm, core)]
-#![feature(libc)]
 #![no_std]
 
 //! libfringe is a low-level green threading library.
