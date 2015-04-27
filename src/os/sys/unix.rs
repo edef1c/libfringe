@@ -11,7 +11,6 @@ use super::page_size;
 use core::ptr;
 
 #[cold]
-#[inline(never)]
 pub fn sys_page_size() -> usize {
   unsafe {
     libc::sysconf(libc::_SC_PAGESIZE) as usize
