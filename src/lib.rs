@@ -4,6 +4,7 @@
 #![feature(no_std)]
 #![feature(asm, core)]
 #![feature(alloc)]
+#![feature(thread_local)]
 #![no_std]
 
 //! libfringe is a low-level green threading library.
@@ -22,12 +23,19 @@ extern crate std;
 #[macro_use]
 extern crate std;
 
-
 pub use context::Context;
 pub use stack::Stack;
 
 #[cfg(feature = "os")]
 pub use os::Stack as OsStack;
+
+#[cfg(windows)]
+#[cfg(feature = "os")]
+pub use osfiber::Fiber as OsFiber;
+
+#[cfg(feature = "os")]
+#[cfg(windows)]
+mod osfiber;
 
 mod context;
 mod stack;
