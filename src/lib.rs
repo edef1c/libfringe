@@ -3,6 +3,7 @@
 // See the LICENSE file included in this distribution.
 #![feature(no_std)]
 #![feature(asm, core)]
+#![feature(alloc)]
 #![no_std]
 
 //! libfringe is a low-level green threading library.
@@ -12,8 +13,15 @@
 extern crate core;
 
 #[cfg(test)]
+#[cfg(not(windows))]
 #[macro_use]
 extern crate std;
+
+#[cfg(not(test))]
+#[cfg(windows)]
+#[macro_use]
+extern crate std;
+
 
 pub use context::Context;
 pub use stack::Stack;
@@ -31,4 +39,5 @@ mod arch;
 mod debug;
 
 #[cfg(not(test))]
+#[cfg(not(windows))]
 mod std { pub use core::*; }
