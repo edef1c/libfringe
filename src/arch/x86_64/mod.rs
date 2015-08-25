@@ -2,6 +2,7 @@
 // Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
 // See the LICENSE file included in this distribution.
 use stack::Stack;
+use void::Void;
 use super::common::{push, rust_trampoline};
 
 pub const STACK_ALIGN: usize = 16;
@@ -14,7 +15,8 @@ pub struct Registers {
 
 impl Registers {
   #[inline]
-  pub unsafe fn new<S, F>(stack: &mut S, f: F) -> Registers where S: Stack, F: FnOnce() {
+  pub unsafe fn new<S, F>(stack: &mut S, f: F) -> Registers
+    where S: Stack, F: FnOnce() -> Void {
     let sp_limit = stack.limit();
     let mut sp = stack.top() as *mut usize;
     let f_ptr = push(&mut sp, f);
