@@ -12,6 +12,8 @@
 #[macro_use]
 extern crate std;
 
+extern crate void;
+
 pub use context::Context;
 pub use stack::Stack;
 
