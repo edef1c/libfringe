@@ -15,6 +15,7 @@ fn main() {
     let mut ctx = Context::new(stack, move || {
       println!("it's alive!");
       (*ctx_slot).swap();
+      panic!("Do not come back!")
     });
 
     ctx_slot = &mut ctx;

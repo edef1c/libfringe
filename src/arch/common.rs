@@ -6,10 +6,14 @@ use core::mem::{size_of, align_of};
 use core::cmp::max;
 use core::ptr;
 
+use void::{self, Void};
+
 use super::imp::STACK_ALIGN;
 
-pub unsafe extern "C" fn rust_trampoline<F: FnOnce()>(f: *const F) {
-  ptr::read(f)()
+pub unsafe extern "C" fn rust_trampoline<F>(f: *const F) -> !
+  where F: FnOnce<(), Output=Void>
+{
+  void::unreachable(ptr::read(f)())
 }
 
 pub unsafe fn push<T>(spp: &mut *mut usize, value: T) -> *mut T {
