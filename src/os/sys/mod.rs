@@ -1,7 +1,7 @@
 // This file is part of libfringe, a low-level green threading library.
 // Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
 // See the LICENSE file included in this distribution.
-use core::atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
+use core::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
 
 pub use self::imp::{map_stack, protect_stack, unmap_stack};
 use self::imp::sys_page_size;
