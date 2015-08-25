@@ -3,6 +3,8 @@
 // See the LICENSE file included in this distribution.
 use core::prelude::*;
 
+use void::Void;
+
 use stack::Stack;
 use super::common::{push, rust_trampoline};
 
@@ -16,7 +18,9 @@ pub struct Registers {
 
 impl Registers {
   #[inline]
-  pub unsafe fn new<S, F>(stack: &mut S, f: F) -> Registers where S: Stack, F: FnOnce() {
+  pub unsafe fn new<S, F>(stack: &mut S, f: F) -> Registers
+    where S: Stack, F: FnOnce<(), Output=Void>
+  {
     let sp_limit = stack.limit();
     let mut sp = stack.top() as *mut usize;
     let f_ptr = push(&mut sp, f);

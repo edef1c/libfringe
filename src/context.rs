@@ -3,6 +3,9 @@
 // See the LICENSE file included in this distribution.
 use core::prelude::*;
 use core::marker::PhantomData;
+
+use void::Void;
+
 use arch::Registers;
 use stack;
 use debug::StackId;
@@ -28,10 +31,9 @@ unsafe impl<'a, Stack> Send for Context<'a, Stack>
 impl<'a, Stack> Context<'a, Stack> where Stack: stack::Stack {
   /// Create a new Context. When it is swapped into,
   /// it will call the passed closure.
-  /// The closure shouldn't return - doing that will abort the process.
   #[inline]
   pub unsafe fn new<F>(mut stack: Stack, f: F) -> Context<'a, Stack>
-    where F: FnOnce() + Send + 'a {
+    where F: FnOnce<(), Output=Void> + Send + 'a {
     let stack_id = StackId::register(&mut stack);
     let regs = Registers::new(&mut stack, f);
     Context {

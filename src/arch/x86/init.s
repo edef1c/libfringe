@@ -35,9 +35,6 @@ movl $$0, %ebp
 // call the function pointer with the data pointer (top of the stack is the first argument)
 call *%eax
 
-// crash if it ever returns
-ud2
-
 1:
   // save our neatly-setup new stack
   xchg %esp, %eax

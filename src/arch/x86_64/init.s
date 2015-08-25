@@ -35,9 +35,6 @@ movq $$0, %rbp
 // call the function pointer with the data pointer (rdi is the first argument)
 call *%rax
 
-// crash if it ever returns
-ud2
-
 1:
   // save our neatly-setup new stack
   xchg %rsp, %rdi
