@@ -2,7 +2,6 @@
 // Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
 // See the LICENSE file included in this distribution.
 extern crate libc;
-use core::prelude::*;
 use self::libc::{c_void, c_int, size_t};
 use self::libc::{mmap, mprotect, munmap};
 use self::libc::MAP_FAILED;
