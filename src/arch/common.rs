@@ -18,7 +18,7 @@ pub unsafe fn push<T>(spp: &mut *mut usize, value: T) -> *mut T {
   let mut sp = *spp as *mut T;
   sp = offset_mut(sp, -1);
   sp = align_down_mut(sp, max(align_of::<T>(), STACK_ALIGN));
-  *sp = value;
+  ptr::write(sp, value); // does not attempt to drop old value
   *spp = sp as *mut usize;
   sp
 }
