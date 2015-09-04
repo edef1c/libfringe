@@ -14,7 +14,7 @@ mod imp {
   pub struct StackId;
   /// No-op since no valgrind
   impl StackId {
-    pub unsafe fn register<Stack: stack::Stack>(_stack: &mut Stack) -> StackId {
+    pub fn register<Stack: stack::Stack>(_stack: &mut Stack) -> StackId {
       StackId
     }
   }
