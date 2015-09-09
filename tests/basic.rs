@@ -8,6 +8,7 @@ use fringe::Context;
 #[thread_local]
 static mut ctx_slot: *mut Context<'static, fringe::OsStack> = 0 as *mut Context<_>;
 
+#[test]
 fn main() {
   unsafe {
     let stack = fringe::OsStack::new(4 << 20).unwrap();
