@@ -19,6 +19,7 @@ extern {
   fn feenableexcept(except: i32) -> i32;
 }
 
+#[ignore]
 #[test]
 fn fpe() {
   unsafe {
