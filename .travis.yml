@@ -6,6 +6,6 @@ install:
 script: 
   - cargo test
   - cargo bench
-  - cargo doc --no-deps
+  - cargo doc
 after_success:
   - .travis/docs/after_success
