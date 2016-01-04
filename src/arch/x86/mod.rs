@@ -18,7 +18,6 @@ impl Registers {
   #[inline]
   pub unsafe fn new<S, F>(stack: &mut S, f: F) -> Registers
     where S: Stack, F: FnOnce() -> Void {
-    let sp_limit = stack.limit();
     let mut sp = stack.top() as *mut usize;
     let f_ptr = push(&mut sp, f);
 
@@ -26,8 +25,7 @@ impl Registers {
           : "={eax}"(sp)
           : "{eax}" (sp),
             "{ebx}" (rust_trampoline::<F>),
-            "{ecx}" (f_ptr),
-            "{edx}" (sp_limit)
+            "{ecx}" (f_ptr)
           :
           : "volatile");
 
