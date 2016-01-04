@@ -7,7 +7,6 @@
 //!  * rdi: stack pointer
 //!  * rsi: function pointer
 //!  * rdx: data pointer
-//!  * rcx: stack limit
 //!
 //! return values:
 //!  * rdi: new stack pointer
@@ -15,17 +14,15 @@
 // switch to the fresh stack
 xchg %rsp, %rdi
 
-// save the function pointer, data pointer, and stack limit, respectively
+// save the function pointer the data pointer, respectively
 pushq %rsi
 pushq %rdx
-pushq %rcx
 
 // save the return address, control flow continues at label 1
 call 1f
 // we arrive here once this context is reactivated (see swap.s)
 
-// restore the stack limit, data pointer, and function pointer, respectively
-popq %fs:0x70
+// restore the data pointer and the function pointer, respectively
 popq %rdi
 popq %rax
 

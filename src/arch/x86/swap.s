@@ -6,19 +6,15 @@
 //! arguments:
 //!  * eax: stack pointer pointer
 
-// save the Rust stack limit and the frame pointer, respectively
-// TODO: this stack limit location is specific to Linux/FreeBSD.
-pushl %gs:0x30
+// save the frame pointer
 pushl %ebp
 
 // save the return address to the stack, control flow continues at label 1
 call 1f
 // we arrive here once this context is reactivated
 
-// restore the frame pointer and the Rust stack limit, respectively
+// restore the frame pointer
 popl %ebp
-// TODO: this stack limit location is specific to Linux/FreeBSD.
-popl %gs:0x30
 
 // and we merrily go on our way, back into Rust-land
 jmp 2f

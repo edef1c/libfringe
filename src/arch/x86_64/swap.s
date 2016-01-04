@@ -9,17 +9,15 @@
 // make sure we leave the red zone alone
 sub $$128, %rsp
 
-// save the Rust stack limit and the frame pointer, respectively
-pushq %fs:0x70
+// save the frame pointer
 pushq %rbp
 
 // save the return address to the stack, control flow continues at label 1
 call 1f
 // we arrive here once this context is reactivated
 
-// restore the frame pointer and the Rust stack limit, respectively
+// restore the frame pointer
 popq %rbp
-popq %fs:0x70
 
 // give back the red zone
 add $$128, %rsp
