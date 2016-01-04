@@ -4,7 +4,7 @@
 pub use self::imp::*;
 
 #[cfg(feature = "valgrind")]
-#[path = "valgrind/mod.rs"]
+#[path = "valgrind.rs"]
 mod imp;
 
 #[cfg(not(feature = "valgrind"))]
