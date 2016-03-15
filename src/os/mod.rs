@@ -11,7 +11,6 @@ mod sys;
 /// anonymous memory mapping facility, usually `mmap`.
 /// The stack it provides comes with a guard page, which is not included
 /// in the stack limit.
-#[allow(raw_pointer_derive)]
 #[derive(Debug)]
 pub struct Stack {
   ptr: *mut u8,
