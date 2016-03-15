@@ -36,9 +36,10 @@ impl Stack {
       Stack { ptr: ptr as *mut u8, len: len }
     };
 
-    try!(unsafe {
-      if sys::protect_stack(stack.ptr) { Ok(()) }
-      else { Err(IoError::last_os_error()) }
+    try!(if unsafe { sys::protect_stack(stack.ptr) } {
+      Ok(())
+    } else {
+      Err(IoError::last_os_error())
     });
 
     Ok(stack)

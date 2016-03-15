@@ -32,11 +32,10 @@ const STACK_FLAGS: c_int = libc::MAP_PRIVATE
 pub unsafe fn map_stack(len: usize) -> Option<*mut u8> {
   let ptr = mmap(ptr::null_mut(), len as size_t,
                  STACK_PROT, STACK_FLAGS, -1, 0);
-  if ptr != MAP_FAILED {
-    Some(ptr as *mut u8)
-  }
-  else {
+  if ptr == MAP_FAILED {
     None
+  } else {
+    Some(ptr as *mut u8)
   }
 }
 
