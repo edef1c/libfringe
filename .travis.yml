@@ -4,9 +4,9 @@ sudo: false
 install:
   - .travis/docs/install
 script: 
-  - cargo build
-  - cargo test
-  - cargo bench
+  - cargo build --verbose
+  - cargo test --verbose
+  - cargo bench --verbose
   - cargo doc
 after_success:
   - .travis/docs/after_success
