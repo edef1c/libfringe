@@ -51,7 +51,7 @@ impl<'a, Stack> Context<'a, Stack> where Stack: stack::Stack {
 
   /// Switch to in_ctx, saving the current thread of execution to out_ctx.
   #[inline(always)]
-  pub unsafe fn swap2(out_ctx: *mut Context<'a, Stack>, in_ctx: *const Context<'a, Stack>) {
+  pub unsafe fn swap2<'b>(out_ctx: *mut Context<'a, Stack>, in_ctx: *const Context<'b, Stack>) {
     Registers::swap2(&mut (*out_ctx).regs, &(*in_ctx).regs)
   }
 
