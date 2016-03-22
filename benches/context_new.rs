@@ -4,7 +4,7 @@
 #![feature(test)]
 extern crate test;
 extern crate fringe;
-use fringe::{Context, Stack};
+use fringe::Context;
 
 static mut ctx_slot: *mut Context<'static, SliceStack<'static>> = 0 as *mut Context<_>;
 static mut stack_buf: [u8; 1024] = [0; 1024];
