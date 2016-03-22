@@ -4,7 +4,8 @@
 
 //! switch to a new context
 //! arguments:
-//!  * eax: stack pointer pointer
+//!  * eax: stack pointer out pointer
+//!  * ebx: stack pointer in pointer
 
 // save the frame pointer
 pushl %ebp
@@ -21,11 +22,11 @@ jmp 2f
 
 1:
   // retrieve the new stack pointer
-  movl (%eax), %ebx
+  movl (%eax), %edx
   // save the old stack pointer
-  movl %esp, (%eax)
+  movl %esp, (%ebx)
   // switch to the new stack pointer
-  movl %ebx, %esp
+  movl %edx, %esp
 
   // jump into the new context (return to the call point)
   // doing this instead of a straight `ret` is 8ns slower,
