@@ -4,7 +4,8 @@
 
 //! switch to a new context
 //! arguments:
-//!  * rdi: stack pointer pointer
+//!  * rdi: stack pointer out pointer
+//!  * rsi: stack pointer in pointer
 
 // make sure we leave the red zone alone
 sub $$128, %rsp
@@ -27,7 +28,7 @@ jmp 2f
 
 1:
   // retrieve the new stack pointer
-  movq (%rdi), %rax
+  movq (%rsi), %rax
   // save the old stack pointer
   movq %rsp, (%rdi)
   // switch to the new stack pointer

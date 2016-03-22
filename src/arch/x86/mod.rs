@@ -32,10 +32,13 @@ impl Registers {
   }
 
   #[inline(always)]
-  pub unsafe fn swap(&mut self) {
+  pub unsafe fn swap2(out_regs: *mut Registers, in_regs: *const Registers) {
+    let out_espp = &mut (*out_regs).esp;
+    let in_espp = &(*in_regs).esp;
     asm!(include_str!("swap.s")
           :
-          : "{eax}" (&mut self.esp)
+          : "{eax}" (out_espp),
+            "{ebx}" (in_espp)
           : "eax",  "ebx",  "ecx",  "edx",  "esi",  "edi", //"ebp",  "esp",
             "mmx0", "mmx1", "mmx2", "mmx3", "mmx4", "mmx5", "mmx6", "mmx7",
             "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7",
