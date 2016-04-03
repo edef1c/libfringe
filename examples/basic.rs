@@ -14,12 +14,12 @@ fn main() {
 
     let mut ctx = Context::new(stack, move || {
       println!("it's alive!");
-      (*ctx_slot).swap();
+      Context::swap(ctx_slot, ctx_slot);
       panic!("Do not come back!")
     });
 
     ctx_slot = &mut ctx;
 
-    (*ctx_slot).swap();
+    Context::swap(ctx_slot, ctx_slot);
   }
 }

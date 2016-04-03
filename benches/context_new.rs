@@ -17,13 +17,13 @@ fn context_new(b: &mut test::Bencher) {
     let mut ctx = Context::new(stack, move || {
       let ctx_ptr = ctx_slot;
       loop {
-        (*ctx_ptr).swap()
+        Context::swap(ctx_ptr, ctx_ptr);
       }
     });
 
     ctx_slot = &mut ctx;
 
-    ctx.swap();
+    Context::swap(ctx_slot, ctx_slot);
   })
 }
 

@@ -17,14 +17,15 @@ fn swap(b: &mut test::Bencher) {
     let mut ctx = Context::new(stack, move || {
       let ctx_ptr = ctx_slot;
       loop {
-        (*ctx_ptr).swap()
+        Context::swap(ctx_ptr, ctx_ptr);
       }
     });
 
-    ctx_slot = &mut ctx;
+    let ctx_ptr = &mut ctx;
+    ctx_slot = ctx_ptr;
 
-    ctx.swap();
+    Context::swap(ctx_ptr, ctx_ptr);
 
-    b.iter(|| ctx.swap());
+    b.iter(|| Context::swap(ctx_ptr, ctx_ptr));
   }
 }
