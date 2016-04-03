@@ -4,7 +4,7 @@ version = "0.0.1"
 authors = ["Nathan Zadoks <nathan@nathan7.eu>"]
 
 [dependencies]
-void = "0.0.5"
+void = "1.0.0"
 
 [features]
 default = ["os", "valgrind"]
