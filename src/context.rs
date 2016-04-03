@@ -43,21 +43,17 @@ impl<'a, Stack> Context<'a, Stack> where Stack: stack::Stack {
     }
   }
 
-  /// Switch to the context, saving the current thread of execution there.
-  #[inline(always)]
-  pub unsafe fn swap(&mut self) {
-    Context::swap2(self, self)
-  }
-
-  /// Switch to in_ctx, saving the current thread of execution to out_ctx.
-  #[inline(always)]
-  pub unsafe fn swap2<'b>(out_ctx: *mut Context<'a, Stack>, in_ctx: *const Context<'b, Stack>) {
-    Registers::swap2(&mut (*out_ctx).regs, &(*in_ctx).regs)
-  }
-
   /// Unwrap the context, returning the stack it contained.
   #[inline]
   pub unsafe fn unwrap(self) -> Stack {
     self.stack
+  }
+}
+
+impl<'i, InStack> Context<'i, InStack> where InStack: stack::Stack {
+  /// Switch to in_ctx, saving the current thread of execution to out_ctx.
+  #[inline(always)]
+  pub unsafe fn swap<'o, OutStack: stack::Stack>(out_ctx: *mut Context<'o, OutStack>, in_ctx: *const Context<'i, InStack>) {
+    Registers::swap2(&mut (*out_ctx).regs, &(*in_ctx).regs)
   }
 }
