@@ -37,7 +37,7 @@ impl Registers {
     asm!(include_str!("swap.s")
           :
           : "{rdi}" (out_rspp),
-            "{rdi}" (in_rspp)
+            "{rsi}" (in_rspp)
           : "rax",   "rbx",   "rcx",   "rdx",   "rsi",   "rdi", //"rbp",   "rsp",
             "r8",    "r9",    "r10",   "r11",   "r12",   "r13",   "r14",   "r15",
             "xmm0",  "xmm1",  "xmm2",  "xmm3",  "xmm4",  "xmm5",  "xmm6",  "xmm7",
