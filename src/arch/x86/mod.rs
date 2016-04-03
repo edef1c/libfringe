@@ -23,7 +23,7 @@ impl Registers {
     asm!(include_str!("init.s")
           : "={eax}"(sp)
           : "{eax}" (sp),
-            "{ebx}" (rust_trampoline::<F>),
+            "{ebx}" (rust_trampoline::<F> as unsafe extern "C" fn(*const F) -> !),
             "{ecx}" (f_ptr)
           :
           : "volatile");

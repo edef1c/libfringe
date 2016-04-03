@@ -22,7 +22,7 @@ impl Registers {
     asm!(include_str!("init.s")
           : "={rdi}"(sp)
           : "{rdi}" (sp),
-            "{rsi}" (rust_trampoline::<F>),
+            "{rsi}" (rust_trampoline::<F> as unsafe extern "C" fn(*const F) -> !),
             "{rdx}" (f_ptr)
           :
           : "volatile");
