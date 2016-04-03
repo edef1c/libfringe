@@ -32,7 +32,7 @@ impl Registers {
   }
 
   #[inline(always)]
-  pub unsafe fn swap2(out_regs: *mut Registers, in_regs: *const Registers) {
+  pub unsafe fn swap(out_regs: *mut Registers, in_regs: *const Registers) {
     let out_espp = &mut (*out_regs).esp;
     let in_espp = &(*in_regs).esp;
     asm!(include_str!("swap.s")
