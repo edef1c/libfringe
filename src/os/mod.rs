@@ -1,5 +1,5 @@
 // This file is part of libfringe, a low-level green threading library.
-// Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
+// Copyright (c) Nathan Zadoks <nathan@nathan7.eu>
 // See the LICENSE file included in this distribution.
 
 extern crate std;
@@ -11,7 +11,6 @@ mod sys;
 /// anonymous memory mapping facility, usually `mmap`.
 /// The stack it provides comes with a guard page, which is not included
 /// in the stack limit.
-#[allow(raw_pointer_derive)]
 #[derive(Debug)]
 pub struct Stack {
   ptr: *mut u8,
@@ -37,9 +36,10 @@ impl Stack {
       Stack { ptr: ptr as *mut u8, len: len }
     };
 
-    try!(unsafe {
-      if sys::protect_stack(stack.ptr) { Ok(()) }
-      else { Err(IoError::last_os_error()) }
+    try!(if unsafe { sys::protect_stack(stack.ptr) } {
+      Ok(())
+    } else {
+      Err(IoError::last_os_error())
     });
 
     Ok(stack)

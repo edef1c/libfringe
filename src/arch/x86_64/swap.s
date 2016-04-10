@@ -1,25 +1,24 @@
 // This file is part of libfringe, a low-level green threading library.
-// Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
+// Copyright (c) Nathan Zadoks <nathan@nathan7.eu>
 // See the LICENSE file included in this distribution.
 
 //! switch to a new context
 //! arguments:
-//!  * rdi: stack pointer pointer
+//!  * rdi: stack pointer out pointer
+//!  * rsi: stack pointer in pointer
 
 // make sure we leave the red zone alone
 sub $$128, %rsp
 
-// save the Rust stack limit and the frame pointer, respectively
-pushq %fs:0x70
+// save the frame pointer
 pushq %rbp
 
 // save the return address to the stack, control flow continues at label 1
 call 1f
 // we arrive here once this context is reactivated
 
-// restore the frame pointer and the Rust stack limit, respectively
+// restore the frame pointer
 popq %rbp
-popq %fs:0x70
 
 // give back the red zone
 add $$128, %rsp
@@ -29,7 +28,7 @@ jmp 2f
 
 1:
   // retrieve the new stack pointer
-  movq (%rdi), %rax
+  movq (%rsi), %rax
   // save the old stack pointer
   movq %rsp, (%rdi)
   // switch to the new stack pointer

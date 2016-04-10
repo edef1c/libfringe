@@ -29,14 +29,14 @@ fn fpe() {
         println!("it's alive!");
         loop {
             println!("{:?}", 1.0/black_box(0.0));
-            (*ctx_slot).swap();
+            Context::swap(ctx_slot, ctx_slot);
         }
     });
 
     ctx_slot = &mut ctx;
 
-    (*ctx_slot).swap();
+    Context::swap(ctx_slot, ctx_slot);
     feenableexcept(FE_DIVBYZERO);
-    (*ctx_slot).swap();
+    Context::swap(ctx_slot, ctx_slot);
   }
 }

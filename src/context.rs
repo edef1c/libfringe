@@ -1,5 +1,5 @@
 // This file is part of libfringe, a low-level green threading library.
-// Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
+// Copyright (c) Nathan Zadoks <nathan@nathan7.eu>
 // See the LICENSE file included in this distribution.
 use core::marker::PhantomData;
 
@@ -43,15 +43,18 @@ impl<'a, Stack> Context<'a, Stack> where Stack: stack::Stack {
     }
   }
 
-  /// Switch to the context, saving the current thread of execution there.
-  #[inline(always)]
-  pub unsafe fn swap(&mut self) {
-    self.regs.swap()
-  }
-
   /// Unwrap the context, returning the stack it contained.
   #[inline]
   pub unsafe fn unwrap(self) -> Stack {
     self.stack
+  }
+}
+
+impl<'i, InStack> Context<'i, InStack> where InStack: stack::Stack {
+  /// Switch to in_ctx, saving the current thread of execution to out_ctx.
+  #[inline(always)]
+  pub unsafe fn swap<'o, OutStack>(out_ctx: *mut Context<'o, OutStack>, in_ctx: *const Context<'i, InStack>)
+    where OutStack: stack::Stack {
+    Registers::swap(&mut (*out_ctx).regs, &(*in_ctx).regs)
   }
 }

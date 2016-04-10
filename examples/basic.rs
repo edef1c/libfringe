@@ -1,5 +1,5 @@
 // This file is part of libfringe, a low-level green threading library.
-// Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
+// Copyright (c) Nathan Zadoks <nathan@nathan7.eu>
 // See the LICENSE file included in this distribution.
 #![feature(thread_local)]
 extern crate fringe;
@@ -14,12 +14,12 @@ fn main() {
 
     let mut ctx = Context::new(stack, move || {
       println!("it's alive!");
-      (*ctx_slot).swap();
+      Context::swap(ctx_slot, ctx_slot);
       panic!("Do not come back!")
     });
 
     ctx_slot = &mut ctx;
 
-    (*ctx_slot).swap();
+    Context::swap(ctx_slot, ctx_slot);
   }
 }

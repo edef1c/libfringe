@@ -1,5 +1,5 @@
 // This file is part of libfringe, a low-level green threading library.
-// Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
+// Copyright (c) Nathan Zadoks <nathan@nathan7.eu>
 // See the LICENSE file included in this distribution.
 
 //! initialise a new context
@@ -7,7 +7,6 @@
 //!  * eax: stack pointer
 //!  * ebx: function pointer
 //!  * ecx: data pointer
-//!  * edx: stack limit
 //!
 //! return values:
 //!  * eax: new stack pointer
@@ -15,18 +14,15 @@
 // switch to the fresh stack
 xchg %esp, %eax
 
-// save the data pointer, function pointer, and stack limit, respectively
+// save the data pointer and the function pointer, respectively
 pushl %ecx
 pushl %ebx
-pushl %edx
 
 // save the return address, control flow continues at label 1
 call 1f
 // we arrive here once this context is reactivated (see swap.s)
 
-// restore the stack limit, data pointer, and function pointer, respectively
-// TODO: this stack limit location is specific to Linux/FreeBSD.
-popl %gs:0x30
+// restore the function pointer (the data pointer is the first argument, which lives at the top of the stack)
 popl %eax
 
 // initialise the frame pointer
