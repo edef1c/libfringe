@@ -3,8 +3,9 @@ name = "fringe"
 version = "0.0.1"
 authors = ["Nathan Zadoks <nathan@nathan7.eu>"]
 
-[dependencies]
-void = "1.0.0"
+[dependencies.void]
+version = "1"
+default-features = false
 
 [features]
 default = ["os", "valgrind"]
