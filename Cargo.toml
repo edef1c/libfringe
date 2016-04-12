@@ -3,8 +3,9 @@ name = "fringe"
 version = "0.0.1"
 authors = ["edef <edef@edef.eu>"]
 
-[dependencies]
-void = "1.0.0"
+[dependencies.void]
+version = "1"
+default-features = false
 
 [features]
 default = ["os", "valgrind"]
