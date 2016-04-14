@@ -3,6 +3,10 @@ authors = ["Nathan Zadoks <nathan@nathan7.eu>"]
 name = "fringe"
 version = "0.0.1"
 
+[dependencies.kernel32-sys]
+optional = true
+version = "0.2.2"
+
 [dependencies.libc]
 optional = true
 version = "0.1.6"
@@ -16,6 +20,10 @@ rev = "7aa8b3fcd3b19994c4669cabc6eae1f96882729d"
 default-features = false
 version = "1"
 
+[dependencies.winapi]
+optional = true
+version = "0.2.6"
+
 [features]
 default = ["os", "valgrind"]
-os = ["libc"]
+os = ["libc", "kernel32-sys", "winapi"]
