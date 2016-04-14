@@ -1,21 +1,21 @@
 [package]
+authors = ["edef <edef@edef.eu>"]
 name = "fringe"
 version = "0.0.1"
-authors = ["edef <edef@edef.eu>"]
+
+[dependencies.libc]
+optional = true
+version = "0.1.6"
+
+[dependencies.valgrind]
+git = "https://github.com/edef1c/libvalgrind"
+optional = true
+rev = "9ef793e9549aabfd2d969615180b69d29ce28d88"
 
 [dependencies.void]
-version = "1"
 default-features = false
+version = "1"
 
 [features]
 default = ["os", "valgrind"]
 os = ["libc"]
-
-[dependencies.libc]
-version = "0.1.6"
-optional = true
-
-[dependencies.valgrind]
-git = "https://github.com/edef1c/libvalgrind"
-rev = "9ef793e9549aabfd2d969615180b69d29ce28d88"
-optional = true
