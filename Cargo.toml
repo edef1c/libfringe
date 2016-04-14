@@ -1,21 +1,21 @@
 [package]
+authors = ["Nathan Zadoks <nathan@nathan7.eu>"]
 name = "fringe"
 version = "0.0.1"
-authors = ["Nathan Zadoks <nathan@nathan7.eu>"]
+
+[dependencies.libc]
+optional = true
+version = "0.1.6"
+
+[dependencies.valgrind]
+git = "https://github.com/nathan7/libvalgrind"
+optional = true
+rev = "7aa8b3fcd3b19994c4669cabc6eae1f96882729d"
 
 [dependencies.void]
-version = "1"
 default-features = false
+version = "1"
 
 [features]
 default = ["os", "valgrind"]
 os = ["libc"]
-
-[dependencies.libc]
-version = "0.1.6"
-optional = true
-
-[dependencies.valgrind]
-git = "https://github.com/nathan7/libvalgrind"
-rev = "7aa8b3fcd3b19994c4669cabc6eae1f96882729d"
-optional = true
