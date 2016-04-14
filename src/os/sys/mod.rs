@@ -10,6 +10,10 @@ use self::imp::sys_page_size;
 #[path = "unix.rs"]
 mod imp;
 
+#[cfg(windows)]
+#[path = "windows.rs"]
+mod imp;
+
 static PAGE_SIZE_CACHE: AtomicUsize = ATOMIC_USIZE_INIT;
 pub fn page_size() -> usize {
   match PAGE_SIZE_CACHE.load(Ordering::Relaxed) {
