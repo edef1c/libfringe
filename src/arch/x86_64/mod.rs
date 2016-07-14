@@ -5,7 +5,7 @@ pub use self::common::*;
 
 macro_rules! init {
   ($sp:expr, $f_ptr:expr, $tramp:expr) => {
-    asm!(include_str!("x86_64/init.s")
+    asm!(include_str!("init.s")
          : "={rdi}"($sp)
          : "{rdi}" ($sp),
            "{rsi}" ($tramp),
@@ -17,7 +17,7 @@ macro_rules! init {
 
 macro_rules! swap {
   ($out_spp:expr, $in_spp:expr) => {
-    asm!(include_str!("x86_64/swap.s")
+    asm!(include_str!("swap.s")
          :
          : "{rdi}" ($out_spp)
            "{rsi}" ($in_spp)
