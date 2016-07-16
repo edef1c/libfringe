@@ -81,7 +81,7 @@ pub unsafe fn swap(arg: usize, old_sp: &mut StackPointer, new_sp: &StackPointer)
       # Remember stack pointer of the old context, in case %rdx==%rsi.
       movl    %esp, %ebx
       # Load stack pointer of the new context.
-      movl    (%edi), %esp
+      movl    (%edx), %esp
       # Save stack pointer of the old context.
       movl    %ebx, (%esi)
 
@@ -95,7 +95,7 @@ pub unsafe fn swap(arg: usize, old_sp: &mut StackPointer, new_sp: &StackPointer)
     : "={eax}" (ret)
     : "{eax}" (arg)
       "{esi}" (old_sp)
-      "{edi}" (new_sp)
+      "{edx}" (new_sp)
     : "eax",  "ebx",  "ecx",  "edx",  "esi",  "edi", //"ebp",  "esp",
       "mmx0", "mmx1", "mmx2", "mmx3", "mmx4", "mmx5", "mmx6", "mmx7",
       "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7",
