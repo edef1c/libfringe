@@ -58,17 +58,17 @@ pub unsafe fn swap(arg: usize, old_sp: &mut StackPointer, new_sp: &StackPointer)
 
     1:
       # Remember stack pointer of the old context, in case %rdx==%rsi.
-      movq    %rsp, %rax
+      movq    %rsp, %rbx
       # Load stack pointer of the new context.
       movq    (%rdx), %rsp
       # Save stack pointer of the old context.
-      movq    %rax, (%rsi)
+      movq    %rbx, (%rsi)
 
       # Pop instruction pointer of the new context (placed onto stack by
       # the call above) and jump there; don't use `ret` to avoid return
       # address mispredictions (~8ns on Ivy Bridge).
-      popq    %rax
-      jmpq    *%rax
+      popq    %rbx
+      jmpq    *%rbx
     2:
     "#
     : "={rdi}" (ret)
