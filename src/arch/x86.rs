@@ -29,35 +29,26 @@ impl StackPointer {
 }
 
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
-  let g: usize;
-  asm!(
-    r#"
-      # Push address of the trampoline.
-      call    1f
-
-      # Pop function.
-      popl    %ebx
-      # Push argument.
-      pushl   %eax
-      # Call it.
-      call    *%ebx
-
-    1:
-      # Pop address of the trampoline.
-      popl    %eax
-    "#
-    : "={eax}" (g)
-    :
-    : "memory"
-    : "volatile"
-  );
+  #[naked]
+  unsafe extern "C" fn trampoline() -> ! {
+    asm!(
+      r#"
+        # Pop function.
+        popl    %ebx
+        # Push argument.
+        pushl   %eax
+        # Call it.
+        call    *%ebx
+      "# ::: "memory" : "volatile");
+    ::core::intrinsics::unreachable()
+  }
 
   let mut sp = StackPointer::new(stack);
   sp.push(0); // alignment
   sp.push(0); // alignment
   sp.push(0); // alignment
   sp.push(f as usize); // function
-  sp.push(g as usize); // trampoline
+  sp.push(trampoline as usize);
   sp
 }
 
