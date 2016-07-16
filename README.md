@@ -44,17 +44,10 @@ git = "https://github.com/edef1c/libfringe.git"
 ### Feature flags
 
   [Cargo's feature flags]: http://doc.crates.io/manifest.html#the-[features]-section
-  libfringe provides several optional features through [Cargo's feature flags].
+  libfringe provides some optional features through [Cargo's feature flags].
   Currently, all of them are enabled by default.
 
 #### `valgrind`
 
   [Valgrind]: http://valgrind.org
   [Valgrind] integration. libfringe will register context stacks with Valgrind.
-
-#### `os`
-
-  [Built-in stack allocator]: https://edef1c.github.io/libfringe/fringe/struct.OsStack.html
-  [Built-in stack allocator] using your your operating system's anonymous memory mapping facility.
-  Currently only available for Unix.
-

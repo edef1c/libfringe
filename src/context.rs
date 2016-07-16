@@ -1,13 +1,10 @@
 // This file is part of libfringe, a low-level green threading library.
-// Copyright (c) edef <edef@edef.eu>
+// Copyright (c) edef <edef@edef.eu>,
+//               whitequark <whitequark@whitequark.org>
 // See the LICENSE file included in this distribution.
-use core::marker::PhantomData;
-
-use void::Void;
-
-use arch::Registers;
 use stack;
-use debug::StackId;
+use debug;
+use arch;
 
 /// Context is the heart of libfringe.
 /// A context represents a saved thread of execution, along with a stack.
@@ -17,44 +14,41 @@ use debug::StackId;
 /// Every operation is unsafe, because libfringe can't make any guarantees
 /// about the state of the context.
 #[derive(Debug)]
-pub struct Context<'a, Stack: stack::Stack> {
-  regs: Registers,
-  _stack_id: StackId,
-  stack: Stack,
-  _ref: PhantomData<&'a ()>
+pub struct Context<Stack: stack::Stack> {
+  stack:     Stack,
+  stack_id:  debug::StackId,
+  stack_ptr: arch::StackPointer
 }
 
-unsafe impl<'a, Stack> Send for Context<'a, Stack>
+unsafe impl<Stack> Send for Context<Stack>
   where Stack: stack::Stack + Send {}
 
-impl<'a, Stack> Context<'a, Stack> where Stack: stack::Stack {
-  /// Create a new Context. When it is swapped into,
-  /// it will call the passed closure.
-  #[inline]
-  pub unsafe fn new<F>(mut stack: Stack, f: F) -> Context<'a, Stack>
-    where F: FnOnce() -> Void + Send + 'a {
-    let stack_id = StackId::register(&mut stack);
-    let regs = Registers::new(&mut stack, f);
+impl<Stack> Context<Stack> where Stack: stack::Stack {
+  /// Create a new Context. When it is swapped into, it will call
+  /// `f(arg)`, where `arg` is the argument passed to `swap`.
+  pub unsafe fn new(stack: Stack, f: unsafe extern "C" fn(usize) -> !) -> Context<Stack> {
+    let stack_id  = debug::StackId::register(&stack);
+    let stack_ptr = arch::init(&stack, f);
     Context {
-      regs: regs,
-      _stack_id: stack_id,
-      stack: stack,
-      _ref: PhantomData
+      stack:     stack,
+      stack_id:  stack_id,
+      stack_ptr: stack_ptr
     }
   }
 
   /// Unwrap the context, returning the stack it contained.
-  #[inline]
   pub unsafe fn unwrap(self) -> Stack {
     self.stack
   }
 }
 
-impl<'i, InStack> Context<'i, InStack> where InStack: stack::Stack {
+impl<OldStack> Context<OldStack> where OldStack: stack::Stack {
   /// Switch to in_ctx, saving the current thread of execution to out_ctx.
   #[inline(always)]
-  pub unsafe fn swap<'o, OutStack>(out_ctx: *mut Context<'o, OutStack>, in_ctx: *const Context<'i, InStack>)
-    where OutStack: stack::Stack {
-    Registers::swap(&mut (*out_ctx).regs, &(*in_ctx).regs)
+  pub unsafe fn swap<NewStack>(old_ctx: *mut Context<OldStack>,
+                               new_ctx: *const Context<NewStack>,
+                               arg: usize) -> usize
+      where NewStack: stack::Stack {
+    arch::swap(arg, &mut (*old_ctx).stack_ptr, &(*new_ctx).stack_ptr)
   }
 }
