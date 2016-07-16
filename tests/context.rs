@@ -34,7 +34,7 @@ fn context() {
 }
 
 #[test]
-fn simd() {
+fn context_simd() {
   unsafe extern "C" fn permuter(arg: usize) -> ! {
     // This will crash if the stack is not aligned properly.
     let x = simd::i32x4::splat(arg as i32);
