@@ -7,26 +7,17 @@
 //! libfringe is a low-level green threading library.
 //! It provides only a context-swapping mechanism.
 
-#[cfg(test)]
-#[macro_use]
-extern crate std;
-
-extern crate void;
-
 pub use context::Context;
 pub use stack::Stack;
 
-#[cfg(feature = "os")]
+#[cfg(any(unix, windows))]
 pub use os::Stack as OsStack;
 
 mod context;
 mod stack;
 
-#[cfg(feature = "os")]
+#[cfg(any(unix, windows))]
 mod os;
 
 mod arch;
 mod debug;
-
-#[cfg(not(test))]
-mod std { pub use core::*; }
