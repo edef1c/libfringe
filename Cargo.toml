@@ -3,27 +3,21 @@ authors = ["edef <edef@edef.eu>"]
 name = "fringe"
 version = "0.0.1"
 
-[dependencies.kernel32-sys]
-optional = true
-version = "0.2.2"
+[target.'cfg(unix)'.dependencies]
+libc = "0.1.6"
 
-[dependencies.libc]
-optional = true
-version = "0.1.6"
+[target.'cfg(windows)'.dependencies]
+kernel32-sys = "0.2.2"
+winapi = "0.2.6"
 
 [dependencies.valgrind]
-git = "https://github.com/edef1c/libvalgrind"
 optional = true
+git = "https://github.com/edef1c/libvalgrind"
 rev = "9ef793e9549aabfd2d969615180b69d29ce28d88"
 
 [dependencies.void]
 default-features = false
 version = "1"
 
-[dependencies.winapi]
-optional = true
-version = "0.2.6"
-
 [features]
-default = ["os", "valgrind"]
-os = ["libc", "kernel32-sys", "winapi"]
+default = ["valgrind"]
