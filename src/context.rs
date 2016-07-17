@@ -49,6 +49,6 @@ impl<OldStack> Context<OldStack> where OldStack: stack::Stack {
                                new_ctx: *const Context<NewStack>,
                                arg: usize) -> usize
       where NewStack: stack::Stack {
-    arch::swap(arg, &mut (*old_ctx).stack_ptr, &(*new_ctx).stack_ptr)
+    arch::swap(arg, &mut (*old_ctx).stack_ptr, &(*new_ctx).stack_ptr, &(*new_ctx).stack)
   }
 }
