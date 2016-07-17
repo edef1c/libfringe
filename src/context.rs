@@ -6,13 +6,13 @@ use stack;
 use debug;
 use arch;
 
-/// Context is the heart of libfringe.
-/// A context represents a saved thread of execution, along with a stack.
+/// Context holds a suspended thread of execution along with a stack.
+///
 /// It can be swapped into and out of with the swap method,
 /// and once you're done with it, you can get the stack back through unwrap.
 ///
-/// Every operation is unsafe, because libfringe can't make any guarantees
-/// about the state of the context.
+/// Every operation is unsafe, because no guarantees can be made about
+/// the state of the context.
 #[derive(Debug)]
 pub struct Context<Stack: stack::Stack> {
   stack:     Stack,
@@ -24,7 +24,7 @@ unsafe impl<Stack> Send for Context<Stack>
   where Stack: stack::Stack + Send {}
 
 impl<Stack> Context<Stack> where Stack: stack::Stack {
-  /// Create a new Context. When it is swapped into, it will call
+  /// Creates a new Context. When it is swapped into, it will call
   /// `f(arg)`, where `arg` is the argument passed to `swap`.
   pub unsafe fn new(stack: Stack, f: unsafe extern "C" fn(usize) -> !) -> Context<Stack> {
     let stack_id  = debug::StackId::register(&stack);
@@ -36,14 +36,14 @@ impl<Stack> Context<Stack> where Stack: stack::Stack {
     }
   }
 
-  /// Unwrap the context, returning the stack it contained.
+  /// Unwraps the context, returning the stack it contained.
   pub unsafe fn unwrap(self) -> Stack {
     self.stack
   }
 }
 
 impl<OldStack> Context<OldStack> where OldStack: stack::Stack {
-  /// Switch to in_ctx, saving the current thread of execution to out_ctx.
+  /// Switches to in_ctx, saving the current thread of execution to out_ctx.
   #[inline(always)]
   pub unsafe fn swap<NewStack>(old_ctx: *mut Context<OldStack>,
                                new_ctx: *const Context<NewStack>,
