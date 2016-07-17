@@ -30,6 +30,7 @@
 extern crate std;
 
 pub use stack::Stack;
+pub use stack::GuardedStack;
 pub use context::Context;
 pub use generator::Generator;
 
