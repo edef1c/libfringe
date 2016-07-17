@@ -4,7 +4,7 @@ name = "fringe"
 version = "0.0.1"
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.1.6"
+libc = "0.2.14"
 
 [target.'cfg(windows)'.dependencies]
 kernel32-sys = "0.2.2"
