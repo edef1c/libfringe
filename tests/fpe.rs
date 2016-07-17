@@ -1,6 +1,6 @@
 // This file is part of libfringe, a low-level green threading library.
-// Copyright (c) 2015, Ben Segall <talchas@gmail.com>
-// Copyright (c) 2015, Nathan Zadoks <nathan@nathan7.eu>
+// Copyright (c) Ben Segall <talchas@gmail.com>
+// Copyright (c) Nathan Zadoks <nathan@nathan7.eu>
 // See the LICENSE file included in this distribution.
 #![cfg(target_os = "linux")]
 #![feature(test)]
