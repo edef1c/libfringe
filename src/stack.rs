@@ -14,3 +14,9 @@ pub trait Stack {
   /// so this is the lowest address.
   fn limit(&self) -> *mut u8;
 }
+
+/// A marker trait for `Stack` objects with a guard page.
+///
+/// A guarded stack must guarantee that any access of data at addresses `limit()` to
+/// `limit().offset(4096)` will abnormally terminate the program.
+pub unsafe trait GuardedStack {}
