@@ -15,3 +15,7 @@ build_script:
 test_script:
   - cargo test
   - cargo bench
+artifacts:
+  - path: target
+    name: Cargo output
+    type: zip
