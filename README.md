@@ -8,10 +8,21 @@
 
 # libfringe
 
-  libfringe is a low-level green threading library for Rust.
-  It's usable in freestanding environments (like kernels),
-  but it can also provide an easy-to-use stack allocator using
-  your operating system's memory mapping facility.
+libfringe is a library implementing lightweight context switches,
+without relying on kernel services. It can be used in hosted environments
+(using `std`) as well as on bare metal (using `core`).
+
+It provides high-level, safe abstractions:
+  * an implementation of internal iterators, also known as generators,
+    [Generator](https://edef1c.github.io/libfringe/fringe/generator/struct.Generator.html).
+
+It also provides low-level, *very* unsafe building blocks:
+  * a flexible, low-level context-swapping mechanism,
+    [Context](https://edef1c.github.io/libfringe/fringe/struct.Context.html);
+  * a trait that can be implemented by stack allocators,
+    [Stack](https://edef1c.github.io/libfringe/fringe/struct.Stack.html);
+  * a stack allocator based on anonymous memory mappings with guard pages,
+    [OsStack](https://edef1c.github.io/libfringe/fringe/struct.OsStack.html).
 
 ## Performance
 
