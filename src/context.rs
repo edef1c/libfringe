@@ -43,7 +43,7 @@ impl<Stack> Context<Stack> where Stack: stack::Stack {
 }
 
 impl<OldStack> Context<OldStack> where OldStack: stack::Stack {
-  /// Switches to in_ctx, saving the current thread of execution to out_ctx.
+  /// Switches to `in_ctx`, saving the current thread of execution to `out_ctx`.
   #[inline(always)]
   pub unsafe fn swap<NewStack>(old_ctx: *mut Context<OldStack>,
                                new_ctx: *const Context<NewStack>,
