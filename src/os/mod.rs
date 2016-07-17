@@ -1,10 +1,10 @@
 // This file is part of libfringe, a low-level green threading library.
 // Copyright (c) Nathan Zadoks <nathan@nathan7.eu>
 // See the LICENSE file included in this distribution.
-
 extern crate std;
 use self::std::io::Error as IoError;
 use stack;
+
 mod sys;
 
 /// This object represents a stack from the operating system's
@@ -23,24 +23,22 @@ impl Stack {
   pub fn new(size: usize) -> Result<Stack, IoError> {
     let page_size = sys::page_size();
 
-    // round the page size up,
-    // using the fact that it is a power of two
+    // Round the length one page size up, using the fact that the page size
+    // is a power of two.
     let len = (size + page_size - 1) & !(page_size - 1);
 
-    let stack = unsafe {
-      let ptr = try!(match sys::map_stack(size) {
-        None => Err(IoError::last_os_error()),
-        Some(ptr) => Ok(ptr)
-      });
+    // Increase the length to fit the guard page.
+    let len = len + page_size;
 
-      Stack { ptr: ptr as *mut u8, len: len }
+    // Allocate a stack.
+    let stack = Stack {
+      ptr: try!(unsafe { sys::map_stack(len) }),
+      len: len
     };
 
-    try!(if unsafe { sys::protect_stack(stack.ptr) } {
-      Ok(())
-    } else {
-      Err(IoError::last_os_error())
-    });
+    // Mark the guard page. If this fails, `stack` will be dropped,
+    // unmapping it.
+    try!(unsafe { sys::protect_stack(stack.ptr) });
 
     Ok(stack)
   }
@@ -62,11 +60,6 @@ impl stack::Stack for Stack {
 
 impl Drop for Stack {
   fn drop(&mut self) {
-    unsafe {
-      if !sys::unmap_stack(self.ptr, self.len) {
-        panic!("munmap for stack {:p} of size {} failed: {}",
-               self.ptr, self.len, IoError::last_os_error())
-      }
-    }
+    unsafe { sys::unmap_stack(self.ptr, self.len) }.expect("cannot unmap stack")
   }
 }
