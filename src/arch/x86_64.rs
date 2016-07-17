@@ -22,21 +22,15 @@ use stack::Stack;
 #[derive(Debug)]
 pub struct StackPointer(*mut usize);
 
-impl StackPointer {
-  unsafe fn new(stack: &Stack) -> StackPointer {
-    StackPointer(stack.top() as *mut usize)
-  }
-
-  unsafe fn push(&mut self, val: usize) {
-    self.0 = self.0.offset(-1);
-    *self.0 = val
-  }
-}
-
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
-  let mut sp = StackPointer::new(stack);
-  sp.push(0); // alignment
-  sp.push(f as usize);
+  unsafe fn push(sp: &mut StackPointer, val: usize) {
+    sp.0 = sp.0.offset(-1);
+    *sp.0 = val
+  }
+
+  let mut sp = StackPointer(stack.top() as *mut usize);
+  push(&mut sp, 0); // alignment
+  push(&mut sp, f as usize);
   sp
 }
 
