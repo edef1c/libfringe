@@ -28,9 +28,12 @@ impl Stack {
   pub fn new(size: usize) -> Result<Stack, IoError> {
     let page_size = sys::page_size();
 
+    // Stacks have to be at least one page long.
+    let len = if size == 0 { page_size } else { size };
+
     // Round the length one page size up, using the fact that the page size
     // is a power of two.
-    let len = (size + page_size - 1) & !(page_size - 1);
+    let len = (len + page_size - 1) & !(page_size - 1);
 
     // Increase the length to fit the guard page.
     let len = len + page_size;
