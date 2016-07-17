@@ -167,6 +167,7 @@ impl<Item, Stack> Iterator for Generator<Item, Stack>
 
   /// Resumes the generator and return the next value it yields.
   /// If the generator function has returned, returns `None`.
+  #[inline]
   fn next(&mut self) -> Option<Self::Item> {
     match self.state {
       State::Suspended => {
