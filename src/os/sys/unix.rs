@@ -1,7 +1,9 @@
 // This file is part of libfringe, a low-level green threading library.
 // Copyright (c) edef <edef@edef.eu>
 // See the LICENSE file included in this distribution.
+extern crate std;
 extern crate libc;
+use self::std::io::Error as IoError;
 use self::libc::{c_void, c_int, size_t};
 use self::libc::{mmap, mprotect, munmap};
 use self::libc::MAP_FAILED;
@@ -29,20 +31,27 @@ const STACK_FLAGS: c_int = libc::MAP_STACK
 const STACK_FLAGS: c_int = libc::MAP_PRIVATE
                          | libc::MAP_ANON;
 
-pub unsafe fn map_stack(len: usize) -> Option<*mut u8> {
-  let ptr = mmap(ptr::null_mut(), len as size_t,
-                 STACK_PROT, STACK_FLAGS, -1, 0);
+pub unsafe fn map_stack(len: usize) -> Result<*mut u8, IoError> {
+  let ptr = mmap(ptr::null_mut(), len as size_t, STACK_PROT, STACK_FLAGS, -1, 0);
   if ptr == MAP_FAILED {
-    None
+    Err(IoError::last_os_error())
   } else {
-    Some(ptr as *mut u8)
+    Ok(ptr as *mut u8)
   }
 }
 
-pub unsafe fn protect_stack(ptr: *mut u8) -> bool {
-  mprotect(ptr as *mut c_void, page_size() as size_t, GUARD_PROT) == 0
+pub unsafe fn protect_stack(ptr: *mut u8) -> Result<(), IoError> {
+  if mprotect(ptr as *mut c_void, page_size() as size_t, GUARD_PROT) == 0 {
+    Ok(())
+  } else {
+    Err(IoError::last_os_error())
+  }
 }
 
-pub unsafe fn unmap_stack(ptr: *mut u8, len: usize) -> bool {
-  munmap(ptr as *mut c_void, len as size_t) == 0
+pub unsafe fn unmap_stack(ptr: *mut u8, len: usize) -> Result<(), IoError> {
+  if munmap(ptr as *mut c_void, len as size_t) == 0 {
+    Ok(())
+  } else {
+    Err(IoError::last_os_error())
+  }
 }
