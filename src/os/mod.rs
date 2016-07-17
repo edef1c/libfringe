@@ -50,12 +50,14 @@ impl Stack {
 }
 
 impl stack::Stack for Stack {
+  #[inline(always)]
   fn top(&self) -> *mut u8 {
     unsafe {
       self.ptr.offset(self.len as isize)
     }
   }
 
+  #[inline(always)]
   fn limit(&self) -> *mut u8 {
     unsafe {
       self.ptr.offset(sys::page_size() as isize)
