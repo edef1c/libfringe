@@ -7,8 +7,9 @@ use stack;
 
 mod sys;
 
-/// This object represents a stack from the operating system's
-/// anonymous memory mapping facility, usually `mmap`.
+/// OsStack holds a stack allocated using the operating system's anonymous
+/// memory mapping facility.
+///
 /// The stack it provides comes with a guard page, which is not included
 /// in the stack limit.
 #[derive(Debug)]
@@ -20,6 +21,10 @@ pub struct Stack {
 unsafe impl Send for Stack {}
 
 impl Stack {
+  /// Allocates a new stack with at least `size` accessible bytes.
+  /// `size` is rounded up to an integral number of pages; `Stack::new(0)`
+  /// is legal and allocates the smallest possible stack, consisting
+  /// of one data page and one guard page.
   pub fn new(size: usize) -> Result<Stack, IoError> {
     let page_size = sys::page_size();
 
