@@ -68,6 +68,16 @@ impl<Item, Stack> Generator<Item, Stack>
     where Item: Send, Stack: stack::Stack {
   /// Creates a new generator.
   pub fn new<F>(stack: Stack, f: F) -> Generator<Item, Stack>
+      where Stack: stack::GuardedStack, F: FnOnce(&mut Yielder<Item, Stack>) + Send {
+    unsafe { Generator::unsafe_new(stack, f) }
+  }
+
+  /// Same as `new`, but does not require `stack` to have a guard page.
+  ///
+  /// This function is unsafe because the generator function can easily violate
+  /// memory safety by overflowing the stack. It is useful in environments where
+  /// guarded stacks do not exist, e.g. in absence of an MMU.
+  pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<Item, Stack>
       where F: FnOnce(&mut Yielder<Item, Stack>) + Send {
     unsafe extern "C" fn generator_wrapper<Item, Stack, F>(info: usize) -> !
         where Item: Send, Stack: stack::Stack, F: FnOnce(&mut Yielder<Item, Stack>) {
@@ -82,21 +92,19 @@ impl<Item, Stack> Generator<Item, Stack>
       loop { yielder.return_(None) }
     }
 
-    unsafe {
-      let mut generator = Generator {
-        state:   State::Suspended,
-        context: context::Context::new(stack, generator_wrapper::<Item, Stack, F>),
-        phantom: PhantomData
-      };
+    let mut generator = Generator {
+      state:   State::Suspended,
+      context: context::Context::new(stack, generator_wrapper::<Item, Stack, F>),
+      phantom: PhantomData
+    };
 
-      // Transfer environment to the callee.
-      let mut data = (Yielder::new(&mut generator.context), f);
-      context::Context::swap(&mut generator.context, &generator.context,
-                             &mut data as *mut (Yielder<Item, Stack>, F) as usize);
-      mem::forget(data);
+    // Transfer environment to the callee.
+    let mut data = (Yielder::new(&mut generator.context), f);
+    context::Context::swap(&mut generator.context, &generator.context,
+                           &mut data as *mut (Yielder<Item, Stack>, F) as usize);
+    mem::forget(data);
 
-      generator
-    }
+    generator
   }
 
   /// Returns the state of the generator.
