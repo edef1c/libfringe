@@ -17,7 +17,7 @@ use core::cell::Cell;
 
 use stack;
 use debug;
-use arch::{self, StackPointer};
+use stack_pointer::StackPointer;
 
 #[derive(Debug, Clone, Copy)]
 pub enum State {
@@ -84,7 +84,7 @@ pub struct Generator<Input: Send, Output: Send, Stack: stack::Stack> {
   state:     State,
   stack:     Stack,
   stack_id:  debug::StackId,
-  stack_ptr: arch::StackPointer,
+  stack_ptr: StackPointer,
   phantom:   (PhantomData<*const Input>, PhantomData<*const Output>)
 }
 
@@ -113,7 +113,7 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
               F: FnOnce(&mut Yielder<Input, Output>, Input) {
       // Retrieve our environment from the callee and return control to it.
       let f = ptr::read(env as *const F);
-      let (data, stack_ptr) = arch::swap(0, stack_ptr, None);
+      let (data, stack_ptr) = StackPointer::swap(0, stack_ptr, None);
       // See the second half of Yielder::suspend_bare.
       let input = ptr::read(data as *const Input);
       // Run the body of the generator.
@@ -124,10 +124,10 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
     }
 
     let stack_id  = debug::StackId::register(&stack);
-    let stack_ptr = arch::init(&stack, generator_wrapper::<Input, Output, Stack, F>);
+    let stack_ptr = StackPointer::init(&stack, generator_wrapper::<Input, Output, Stack, F>);
 
     // Transfer environment to the callee.
-    let stack_ptr = arch::swap(&f as *const F as usize, stack_ptr, Some(&stack)).1;
+    let stack_ptr = StackPointer::swap(&f as *const F as usize, stack_ptr, Some(&stack)).1;
     mem::forget(f);
 
     Generator {
@@ -152,7 +152,7 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
 
         // Switch to the generator function, and retrieve the yielded value.
         let val = unsafe {
-          let (data_out, stack_ptr) = arch::swap(&input as *const Input as usize, self.stack_ptr, Some(&self.stack));
+          let (data_out, stack_ptr) = StackPointer::swap(&input as *const Input as usize, self.stack_ptr, Some(&self.stack));
           self.stack_ptr = stack_ptr;
           mem::forget(input);
           ptr::read(data_out as *const Option<Output>)
@@ -203,7 +203,7 @@ impl<Input, Output> Yielder<Input, Output>
   #[inline(always)]
   fn suspend_bare(&self, val: Option<Output>) -> Input {
     unsafe {
-      let (data, stack_ptr) = arch::swap(&val as *const Option<Output> as usize, self.stack_ptr.get(), None);
+      let (data, stack_ptr) = StackPointer::swap(&val as *const Option<Output> as usize, self.stack_ptr.get(), None);
       self.stack_ptr.set(stack_ptr);
       mem::forget(val);
       ptr::read(data as *const Input)

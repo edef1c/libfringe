@@ -42,13 +42,12 @@
 //   from the stack frame at r2 (in the parent stack), thus continuing
 //   unwinding at the swap call site instead of falling off the end of context stack.
 use stack::Stack;
+use stack_pointer::StackPointer;
 
 pub const STACK_ALIGNMENT: usize = 4;
 
-#[derive(Debug, Clone, Copy)]
-pub struct StackPointer(*mut usize);
-
-pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
+pub unsafe fn init(sp: &mut StackPointer,
+                   f: unsafe extern "C" fn(usize, StackPointer) -> !) {
   #[naked]
   unsafe extern "C" fn trampoline_1() {
     asm!(
@@ -111,11 +110,6 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
       : : : : "volatile")
   }
 
-  unsafe fn push(sp: &mut StackPointer, val: usize) {
-    sp.0 = sp.0.offset(-1);
-    *sp.0 = val
-  }
-
   // We set up the stack in a somewhat special way so that to the unwinder it
   // looks like trampoline_1 has called trampoline_2, which has in turn called
   // swap::trampoline.
@@ -124,24 +118,21 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
   // followed by the r2 value for that frame. This setup supports unwinding
   // using DWARF CFI as well as the frame pointer-based unwinding used by tools
   // such as perf or dtrace.
-  let mut sp = StackPointer(stack.base() as *mut usize);
-
-  push(&mut sp, f as usize); // Function that trampoline_2 should call
+  sp.push(f as usize); // Function that trampoline_2 should call
 
   // Call frame for trampoline_2. The CFA slot is updated by swap::trampoline
   // each time a context switch is performed.
-  push(&mut sp, 0xdead0cfa);                // CFA slot
-  push(&mut sp, trampoline_1 as usize + 4); // Return after the nop
+  sp.push(0xdead0cfa);                // CFA slot
+  sp.push(trampoline_1 as usize + 4); // Return after the nop
 
   // Call frame for swap::trampoline. We set up the r2 value to point to the
   // parent call frame.
-  let frame = sp;
-  push(&mut sp, frame.0 as usize);          // Pointer to parent call frame
-  push(&mut sp, trampoline_2 as usize + 4); // Entry point, skip initial nop
+  let scratch_sp = *sp;
+  scratch_sp.push(sp.0 as usize);          // Pointer to parent call frame
+  scratch_sp.push(trampoline_2 as usize + 4); // Entry point
 
   // The last two values are read by the swap trampoline and are actually in the
   // red zone and not below the stack pointer.
-  frame
 }
 
 #[inline(always)]
