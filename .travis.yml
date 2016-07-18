@@ -10,3 +10,5 @@ script:
   - cargo doc
 after_success:
   - .travis/docs/after_success
+notifications:
+  irc: "irc.mozilla.org#libfringe"
