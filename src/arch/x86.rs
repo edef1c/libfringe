@@ -43,13 +43,12 @@
 //   unwinding at the swap call site instead of falling off the end of context stack.
 use core::mem;
 use stack::Stack;
+use stack_pointer::StackPointer;
 
 pub const STACK_ALIGNMENT: usize = 16;
 
-#[derive(Debug, Clone, Copy)]
-pub struct StackPointer(*mut usize);
-
-pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
+pub unsafe fn init(sp: &mut StackPointer,
+                   f: unsafe extern "C" fn(usize, StackPointer) -> !) {
   #[cfg(not(target_vendor = "apple"))]
   #[naked]
   unsafe extern "C" fn trampoline_1() {
@@ -133,11 +132,6 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
       : : : : "volatile")
   }
 
-  unsafe fn push(sp: &mut StackPointer, val: usize) {
-    sp.0 = sp.0.offset(-1);
-    *sp.0 = val
-  }
-
   // We set up the stack in a somewhat special way so that to the unwinder it
   // looks like trampoline_1 has called trampoline_2, which has in turn called
   // swap::trampoline.
@@ -146,25 +140,21 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
   // followed by the %ebp value for that frame. This setup supports unwinding
   // using DWARF CFI as well as the frame pointer-based unwinding used by tools
   // such as perf or dtrace.
-  let mut sp = StackPointer(stack.base() as *mut usize);
-
-  push(&mut sp, 0 as usize); // Padding to ensure the stack is properly aligned
-  push(&mut sp, 0 as usize); // Padding to ensure the stack is properly aligned
-  push(&mut sp, 0 as usize); // Padding to ensure the stack is properly aligned
-  push(&mut sp, f as usize); // Function that trampoline_2 should call
+  sp.push(0 as usize); // Padding to ensure the stack is properly aligned
+  sp.push(0 as usize); // Padding to ensure the stack is properly aligned
+  sp.push(0 as usize); // Padding to ensure the stack is properly aligned
+  sp.push(f as usize); // Function that trampoline_2 should call
 
   // Call frame for trampoline_2. The CFA slot is updated by swap::trampoline
   // each time a context switch is performed.
-  push(&mut sp, trampoline_1 as usize + 2); // Return after the 2 nops
-  push(&mut sp, 0xdead0cfa);                // CFA slot
+  sp.push(trampoline_1 as usize + 2); // Return after the 2 nops
+  sp.push(0xdead0cfa);                // CFA slot
 
   // Call frame for swap::trampoline. We set up the %ebp value to point to the
   // parent call frame.
-  let frame = sp;
-  push(&mut sp, trampoline_2 as usize + 1); // Entry point, skip initial nop
-  push(&mut sp, frame.0 as usize);          // Pointer to parent call frame
-
-  sp
+  let frame = *sp;
+  sp.push(trampoline_2 as usize + 1); // Entry point
+  sp.push(frame.0 as usize);          // Pointer to parent call frame
 }
 
 #[inline(always)]

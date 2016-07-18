@@ -50,6 +50,7 @@ mod arch;
 pub const STACK_ALIGNMENT: usize = arch::STACK_ALIGNMENT;
 
 mod debug;
+mod stack_pointer;
 
 mod stack;
 mod slice_stack;

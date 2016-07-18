@@ -54,7 +54,8 @@ pub const STACK_ALIGNMENT: usize = 16;
 #[derive(Debug, Clone, Copy)]
 pub struct StackPointer(*mut usize);
 
-pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
+pub unsafe fn init(sp: &mut StackPointer,
+                   f: unsafe extern "C" fn(usize, StackPointer) -> !) {
   #[cfg(not(target_vendor = "apple"))]
   #[naked]
   unsafe extern "C" fn trampoline_1() {
@@ -146,23 +147,19 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
   // followed by the x29 value for that frame. This setup supports unwinding
   // using DWARF CFI as well as the frame pointer-based unwinding used by tools
   // such as perf or dtrace.
-  let mut sp = StackPointer(stack.base() as *mut usize);
-
-  push(&mut sp, 0 as usize); // Padding to ensure the stack is properly aligned
-  push(&mut sp, f as usize); // Function that trampoline_2 should call
+  sp.push(0 as usize); // Padding to ensure the stack is properly aligned
+  sp.push(f as usize); // Function that trampoline_2 should call
 
   // Call frame for trampoline_2. The CFA slot is updated by swap::trampoline
   // each time a context switch is performed.
-  push(&mut sp, trampoline_1 as usize + 4); // Return after the nop
-  push(&mut sp, 0xdeaddeaddead0cfa);        // CFA slot
+  sp.push(trampoline_1 as usize + 4); // Return after the nop
+  sp.push(0xdeaddeaddead0cfa);        // CFA slot
 
   // Call frame for swap::trampoline. We set up the x29 value to point to the
   // parent call frame.
-  let frame = sp;
-  push(&mut sp, trampoline_2 as usize + 4); // Entry point, skip initial nop
-  push(&mut sp, frame.0 as usize);          // Pointer to parent call frame
-
-  sp
+  let frame = *sp;
+  sp.push(trampoline_2 as usize + 4); // Entry point, skip initial nop
+  sp.push(frame as usize);            // Pointer to parent call frame
 }
 
 #[inline(always)]
