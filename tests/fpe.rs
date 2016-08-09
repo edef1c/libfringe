@@ -8,11 +8,8 @@
 #![feature(asm)]
 extern crate fringe;
 extern crate test;
-use fringe::Context;
+use fringe::{OsStack, Generator};
 use test::black_box;
-
-#[thread_local]
-static mut ctx_slot: *mut Context<fringe::OsStack> = 0 as *mut Context<_>;
 
 const FE_DIVBYZERO: i32 = 0x4;
 extern {
@@ -22,20 +19,11 @@ extern {
 #[test]
 #[ignore]
 fn fpe() {
-  unsafe extern "C" fn universe_destroyer(_arg: usize) -> ! {
-    loop {
-        println!("{:?}", 1.0/black_box(0.0));
-        Context::swap(ctx_slot, ctx_slot, 0);
-    }
-  }
+  let stack = OsStack::new(0).unwrap();
+  let mut gen = Generator::new(stack, move |yielder| {
+    yielder.generate(1.0 / black_box(0.0));
+  });
 
-  unsafe {
-    let stack = fringe::OsStack::new(4 << 20).unwrap();
-    let mut ctx = Context::new(stack, universe_destroyer);
-    ctx_slot = &mut ctx;
-
-    Context::swap(ctx_slot, ctx_slot, 0);
-    feenableexcept(FE_DIVBYZERO);
-    Context::swap(ctx_slot, ctx_slot, 0);
-  }
+  unsafe { feenableexcept(FE_DIVBYZERO); }
+  println!("{:?}", gen.next());
 }
