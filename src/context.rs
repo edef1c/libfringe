@@ -52,3 +52,118 @@ impl<OldStack> Context<OldStack> where OldStack: stack::Stack {
     arch::swap(arg, &mut (*old_ctx).stack_ptr, &(*new_ctx).stack_ptr, &(*new_ctx).stack)
   }
 }
+
+#[cfg(test)]
+mod test {
+  extern crate test;
+  extern crate simd;
+
+  use std::ptr;
+  use super::Context;
+  use ::OsStack;
+
+  #[thread_local]
+  static mut ctx_slot: *mut Context<OsStack> = ptr::null_mut();
+
+  #[test]
+  fn context() {
+    unsafe extern "C" fn adder(arg: usize) -> ! {
+      println!("it's alive! arg: {}", arg);
+      let arg = Context::swap(ctx_slot, ctx_slot, arg + 1);
+      println!("still alive! arg: {}", arg);
+      Context::swap(ctx_slot, ctx_slot, arg + 1);
+      panic!("i should be dead");
+    }
+
+    unsafe {
+      let stack = OsStack::new(4 << 20).unwrap();
+      let mut ctx = Context::new(stack, adder);
+      ctx_slot = &mut ctx;
+
+      let ret = Context::swap(ctx_slot, ctx_slot, 10);
+      assert_eq!(ret, 11);
+      let ret = Context::swap(ctx_slot, ctx_slot, 50);
+      assert_eq!(ret, 51);
+    }
+  }
+
+  #[test]
+  fn context_simd() {
+    unsafe extern "C" fn permuter(arg: usize) -> ! {
+      // This will crash if the stack is not aligned properly.
+      let x = simd::i32x4::splat(arg as i32);
+      let y = x * x;
+      println!("simd result: {:?}", y);
+      Context::swap(ctx_slot, ctx_slot, 0);
+      // And try again after a context switch.
+      let x = simd::i32x4::splat(arg as i32);
+      let y = x * x;
+      println!("simd result: {:?}", y);
+      Context::swap(ctx_slot, ctx_slot, 0);
+      panic!("i should be dead");
+    }
+
+    unsafe {
+      let stack = OsStack::new(4 << 20).unwrap();
+      let mut ctx = Context::new(stack, permuter);
+      ctx_slot = &mut ctx;
+
+      Context::swap(ctx_slot, ctx_slot, 10);
+      Context::swap(ctx_slot, ctx_slot, 20);
+    }
+  }
+
+  unsafe extern "C" fn do_panic(arg: usize) -> ! {
+    match arg {
+      0 => panic!("arg=0"),
+      1 => {
+        Context::swap(ctx_slot, ctx_slot, 0);
+        panic!("arg=1");
+      }
+      _ => unreachable!()
+    }
+  }
+
+  #[test]
+  #[should_panic="arg=0"]
+  fn panic_after_start() {
+    unsafe {
+      let stack = OsStack::new(4 << 20).unwrap();
+      let mut ctx = Context::new(stack, do_panic);
+
+      Context::swap(&mut ctx, &ctx, 0);
+    }
+  }
+
+  #[test]
+  #[should_panic="arg=1"]
+  fn panic_after_swap() {
+    unsafe {
+      let stack = OsStack::new(4 << 20).unwrap();
+      let mut ctx = Context::new(stack, do_panic);
+      ctx_slot = &mut ctx;
+
+      Context::swap(&mut ctx, &ctx, 1);
+      Context::swap(&mut ctx, &ctx, 0);
+    }
+  }
+
+  #[bench]
+  fn swap(b: &mut test::Bencher) {
+    unsafe extern "C" fn loopback(mut arg: usize) -> ! {
+      // This deliberately does not ignore arg, to measure the time it takes
+      // to move the return value between registers.
+      let ctx_ptr = ctx_slot;
+      loop { arg = Context::swap(ctx_ptr, ctx_ptr, arg) }
+    }
+
+    unsafe {
+      let stack = OsStack::new(4 << 20).unwrap();
+      let mut ctx = Context::new(stack, loopback);
+      ctx_slot = &mut ctx;
+
+      let ctx_ptr = &mut ctx;
+      b.iter(|| Context::swap(ctx_ptr, ctx_ptr, 0));
+    }
+  }
+}

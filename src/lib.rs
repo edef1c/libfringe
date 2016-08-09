@@ -2,6 +2,7 @@
 // Copyright (c) edef <edef@edef.eu>
 // See the LICENSE file included in this distribution.
 #![feature(asm)]
+#![cfg_attr(test, feature(test, thread_local, const_fn))]
 #![cfg_attr(target_arch = "x86",    feature(naked_functions, core_intrinsics))]
 #![cfg_attr(target_arch = "x86_64", feature(naked_functions, core_intrinsics))]
 #![no_std]
