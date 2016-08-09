@@ -16,10 +16,8 @@
 //!   * an implementation of internal iterators, also known as generators,
 //!     [Generator](generator/struct.Generator.html).
 //!
-//! It also provides low-level, *very* unsafe building blocks:
+//! It also provides low-level, unsafe building blocks:
 //!
-//!   * a flexible, low-level context-swapping mechanism,
-//!     [Context](struct.Context.html);
 //!   * a trait that can be implemented by stack allocators,
 //!     [Stack](struct.Stack.html);
 //!   * a stack allocator based on anonymous memory mappings with guard pages,
@@ -33,7 +31,6 @@ extern crate std;
 
 pub use stack::Stack;
 pub use stack::GuardedStack;
-pub use context::Context;
 pub use generator::Generator;
 
 #[cfg(any(unix, windows))]
