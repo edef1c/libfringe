@@ -16,9 +16,7 @@ It provides high-level, safe abstractions:
   * an implementation of internal iterators, also known as generators,
     [Generator](https://nathan7.github.io/libfringe/fringe/generator/struct.Generator.html).
 
-It also provides low-level, *very* unsafe building blocks:
-  * a flexible, low-level context-swapping mechanism,
-    [Context](https://nathan7.github.io/libfringe/fringe/struct.Context.html);
+It also provides low-level, unsafe building blocks:
   * a trait that can be implemented by stack allocators,
     [Stack](https://nathan7.github.io/libfringe/fringe/struct.Stack.html);
   * a stack allocator based on anonymous memory mappings with guard pages,
