@@ -39,7 +39,7 @@ pub struct StackPointer(*mut usize);
 
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
   #[naked]
-  unsafe extern "C" fn init_trampoline_1() {
+  unsafe extern "C" fn trampoline_1() {
     asm!(
       r#"
         # gdb has a hardcoded check that rejects backtraces where frame addresses
@@ -63,11 +63,11 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
       .Lend:
       .size __morestack, .Lend-__morestack
       "#
-      : : "s" (init_trampoline_2 as usize) : "memory" : "volatile")
+      : : "s" (trampoline_2 as usize) : "memory" : "volatile")
   }
 
   #[naked]
-  unsafe extern "C" fn init_trampoline_2() {
+  unsafe extern "C" fn trampoline_2() {
     asm!(
       r#"
         # Set up the second part of our DWARF CFI.
@@ -89,7 +89,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
   push(&mut sp, 0xdeaddeaddead0cfa); // CFA slot
   push(&mut sp, 0 as usize); // alignment
   push(&mut sp, f as usize); // function
-  push(&mut sp, init_trampoline_1 as usize);
+  push(&mut sp, trampoline_1 as usize);
   push(&mut sp, 0xdeaddeaddeadbbbb); // saved %rbp
   sp
 }
@@ -101,7 +101,7 @@ pub unsafe fn swap(arg: usize, old_sp: &mut StackPointer, new_sp: &StackPointer,
   let new_cfa = (new_stack.top() as *mut usize).offset(-1);
 
   #[naked]
-  unsafe extern "C" fn swap_trampoline() {
+  unsafe extern "C" fn trampoline() {
     asm!(
       r#"
         # Save frame pointer explicitly; the unwinder uses it to find CFA of
@@ -137,7 +137,7 @@ pub unsafe fn swap(arg: usize, old_sp: &mut StackPointer, new_sp: &StackPointer,
       call    ${1:c}
     "#
     : "={rdi}" (ret)
-    : "s" (swap_trampoline as usize)
+    : "s" (trampoline as usize)
       "{rdi}" (arg)
       "{rsi}" (old_sp)
       "{rdx}" (new_sp)

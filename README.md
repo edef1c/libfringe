@@ -28,6 +28,26 @@ It also provides the necessary low-level building blocks:
 libfringe emphasizes safety and correctness, and goes to great lengths to never
 violate the platform ABI.
 
+## Usage example
+
+```rust
+extern crate fringe;
+
+use fringe::{OsStack, Generator};
+
+fn main() {
+  let stack = OsStack::new(1 << 16).unwrap();
+  let mut gen = Generator::new(stack, move |yielder, ()| {
+    for i in 1..4 { yielder.generate(i) }
+  });
+
+  println!("{:?}", gen.resume(())); // Some(1)
+  println!("{:?}", gen.resume(())); // Some(2)
+  println!("{:?}", gen.resume(())); // Some(3)
+  println!("{:?}", gen.resume(())); // None
+}
+```
+
 ## Performance
 
 libfringe does context switches in 3ns flat on x86 and x86_64!
@@ -35,6 +55,59 @@ libfringe does context switches in 3ns flat on x86 and x86_64!
 ```
 test swap ... bench:         6 ns/iter (+/- 0)
 ```
+
+## Debuggability
+
+Uniquely among libraries implementing context switching, libfringe ensures that the call stack
+does not abruptly end at the boundary of a generator. Let's consider this buggy code:
+
+```rust
+extern crate fringe;
+
+use fringe::{OsStack, Generator};
+
+fn main() {
+  let stack = OsStack::new(1 << 16).unwrap();
+  let mut gen = Generator::new(stack, move |yielder, mut index| {
+    let values = [1, 2, 3];
+    loop { index = yielder.generate(values[index]) }
+  });
+
+  println!("{:?}", gen.resume(5));
+}
+```
+
+It crashes with the following backtrace (redacted for clarity):
+
+```
+thread 'main' panicked at 'assertion failed: index < self.len()', ../src/libcore/slice.rs:531
+stack backtrace:
+   [... core::panicking internals ...]
+   9:     0x559ee50f677b - core::panicking::panic::hbfac80217e56ecbe
+  10:     0x559ee50b6b4c - core::slice::_<impl core..ops..Index<usize> for [T]>::index::hcb117ddcc7cf2f33
+                        at .../src/libcore/slice.rs:21
+  11:     0x559ee50b7288 - crash_test::main::_{{closure}}::hc7da249d76d51364
+                        at .../crash_test.rs:9
+  12:     0x559ee50b6f23 - _<fringe..generator..Generator<Input, Output, Stack>>::unsafe_new::generator_wrapper::ha2da172d4f041d38
+                        at .../libfringe/src/generator.rs:94
+  13:     0x559ee50b76d3 - fringe::arch::imp::init::trampoline_2::hdb11eb4bdafcdeb9
+                        at .../libfringe/src/arch/x86_64.rs:71
+  14:     0x559ee50b76c4 - fringe::arch::imp::init::trampoline_1::h6b071b2a8ea6aab3
+                        at .../libfringe/src/arch/x86_64.rs:43
+  15:     0x559ee50b7098 - _<fringe..generator..Generator<Input, Output, Stack>>::resume::h8d2b90d386543e29
+                        at .../libfringe/src/arch/x86_64.rs:131
+                        at .../libfringe/src/context.rs:52
+                        at .../libfringe/src/generator.rs:129
+  16:     0x559ee50b71c8 - crash_test::main::hfc5e04bc99de7a6a
+                        at .../crash_test.rs:12
+  [... standard library startup internals ...]
+```
+
+Similarly, debuggers, profilers, and all other tools using the DWARF debug information have
+full insight into the call stacks.
+
+Note that the stack should be deep enough for the panic machinery to store its state—at any point
+there should be at least 8 KiB of free stack space, or panicking will result in a segfault.
 
 ## Limitations
 
