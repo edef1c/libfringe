@@ -1,10 +1,8 @@
 // This file is part of libfringe, a low-level green threading library.
 // Copyright (c) edef <edef@edef.eu>
 // See the LICENSE file included in this distribution.
-#![feature(asm)]
+#![feature(asm, naked_functions)]
 #![cfg_attr(test, feature(test, thread_local, const_fn))]
-#![cfg_attr(target_arch = "x86",    feature(naked_functions, core_intrinsics))]
-#![cfg_attr(target_arch = "x86_64", feature(naked_functions, core_intrinsics))]
 #![no_std]
 
 //! libfringe is a library implementing safe, lightweight context switches,
