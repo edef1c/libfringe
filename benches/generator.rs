@@ -10,9 +10,9 @@ use fringe::{OsStack, Generator};
 #[bench]
 fn generate(b: &mut test::Bencher) {
   let stack = OsStack::new(0).unwrap();
-  let mut gen = Generator::new(stack, move |yielder| {
-    for i in 1.. { yielder.generate(i) }
+  let mut identity = Generator::new(stack, move |yielder, mut input| {
+    loop { input = yielder.generate(input) }
   });
 
-  b.iter(|| test::black_box(gen.next()));
+  b.iter(|| test::black_box(identity.resume(test::black_box(0))));
 }
