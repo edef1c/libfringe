@@ -32,7 +32,6 @@
 //   after. A .cfi_def_* pseudoinstruction changes the CFA value similarly.
 // * Simulating return is as easy as restoring register values from the CFI table
 //   and then setting stack pointer to CFA.
-use core::intrinsics;
 use stack::Stack;
 
 #[derive(Debug)]
@@ -40,7 +39,7 @@ pub struct StackPointer(*mut usize);
 
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
   #[naked]
-  unsafe extern "C" fn init_trampoline_1() -> ! {
+  unsafe extern "C" fn init_trampoline_1() {
     asm!(
       r#"
         # gdb has a hardcoded check that rejects backtraces where frame addresses
@@ -64,12 +63,11 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
       .Lend:
       .size __morestack, .Lend-__morestack
       "#
-      : : "s" (init_trampoline_2 as usize) : "memory" : "volatile");
-    intrinsics::unreachable()
+      : : "s" (init_trampoline_2 as usize) : "memory" : "volatile")
   }
 
   #[naked]
-  unsafe extern "C" fn init_trampoline_2() -> ! {
+  unsafe extern "C" fn init_trampoline_2() {
     asm!(
       r#"
         # Set up the second part of our DWARF CFI.
@@ -79,8 +77,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
         # Call the provided function.
         call    *8(%rsp)
       "#
-      : : : "memory" : "volatile");
-    intrinsics::unreachable()
+      : : : "memory" : "volatile")
   }
 
   unsafe fn push(sp: &mut StackPointer, val: usize) {
@@ -104,7 +101,7 @@ pub unsafe fn swap(arg: usize, old_sp: &mut StackPointer, new_sp: &StackPointer,
   let new_cfa = (new_stack.top() as *mut usize).offset(-1);
 
   #[naked]
-  unsafe extern "C" fn swap_trampoline() -> ! {
+  unsafe extern "C" fn swap_trampoline() {
     asm!(
       r#"
         # Save frame pointer explicitly; the unwinder uses it to find CFA of
@@ -127,8 +124,7 @@ pub unsafe fn swap(arg: usize, old_sp: &mut StackPointer, new_sp: &StackPointer,
         popq    %rbx
         jmpq    *%rbx
       "#
-      : : : "memory" : "volatile");
-    intrinsics::unreachable();
+      : : : "memory" : "volatile")
   }
 
   let ret: usize;
