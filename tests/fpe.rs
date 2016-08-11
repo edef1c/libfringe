@@ -20,10 +20,10 @@ extern {
 #[ignore]
 fn fpe() {
   let stack = OsStack::new(0).unwrap();
-  let mut gen = Generator::new(stack, move |yielder| {
+  let mut gen = Generator::new(stack, move |yielder, ()| {
     yielder.generate(1.0 / black_box(0.0));
   });
 
   unsafe { feenableexcept(FE_DIVBYZERO); }
-  println!("{:?}", gen.next());
+  println!("{:?}", gen.resume(()));
 }
