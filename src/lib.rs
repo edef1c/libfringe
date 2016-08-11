@@ -7,16 +7,16 @@
 #![cfg_attr(target_arch = "x86_64", feature(naked_functions, core_intrinsics))]
 #![no_std]
 
-//! libfringe is a library implementing lightweight context switches,
+//! libfringe is a library implementing safe, lightweight context switches,
 //! without relying on kernel services. It can be used in hosted environments
 //! (using `std`) as well as on bare metal (using `core`).
 //!
-//! It provides high-level, safe abstractions:
+//! It provides the following safe abstractions:
 //!
 //!   * an implementation of internal iterators, also known as generators,
 //!     [Generator](generator/struct.Generator.html).
 //!
-//! It also provides low-level, unsafe building blocks:
+//! It also provides the necessary low-level building blocks:
 //!
 //!   * a trait that can be implemented by stack allocators,
 //!     [Stack](struct.Stack.html);
@@ -31,7 +31,7 @@ pub use stack::Stack;
 pub use stack::GuardedStack;
 pub use generator::Generator;
 
-#[cfg(any(unix, windows))]
+#[cfg(unix)]
 pub use os::Stack as OsStack;
 
 mod arch;
@@ -41,5 +41,5 @@ mod stack;
 mod context;
 pub mod generator;
 
-#[cfg(any(unix, windows))]
+#[cfg(unix)]
 mod os;
