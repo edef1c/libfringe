@@ -85,7 +85,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
     *sp.0 = val
   }
 
-  let mut sp = StackPointer(stack.top() as *mut usize);
+  let mut sp = StackPointer(stack.base() as *mut usize);
   push(&mut sp, 0xdeaddeaddead0cfa); // CFA slot
   push(&mut sp, 0 as usize); // alignment
   push(&mut sp, f as usize); // function
@@ -98,7 +98,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
 pub unsafe fn swap(arg: usize, old_sp: &mut StackPointer, new_sp: &StackPointer,
                    new_stack: &Stack) -> usize {
   // Address of the topmost CFA stack slot.
-  let new_cfa = (new_stack.top() as *mut usize).offset(-1);
+  let new_cfa = (new_stack.base() as *mut usize).offset(-1);
 
   #[naked]
   unsafe extern "C" fn trampoline() {

@@ -51,7 +51,7 @@ impl Stack {
 
 impl stack::Stack for Stack {
   #[inline(always)]
-  fn top(&self) -> *mut u8 {
+  fn base(&self) -> *mut u8 {
     unsafe {
       self.ptr.offset(self.len as isize)
     }
