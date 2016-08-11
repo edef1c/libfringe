@@ -13,7 +13,7 @@
 //!
 //! It provides the following safe abstractions:
 //!
-//!   * an implementation of internal iterators, also known as generators,
+//!   * an implementation of generators,
 //!     [Generator](generator/struct.Generator.html).
 //!
 //! It also provides the necessary low-level building blocks:

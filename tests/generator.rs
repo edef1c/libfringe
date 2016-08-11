@@ -6,57 +6,56 @@ extern crate fringe;
 use fringe::OsStack;
 use fringe::generator::Generator;
 
+fn new_add_one() -> Generator<i32, i32, OsStack> {
+  let stack = OsStack::new(0).unwrap();
+  Generator::new(stack, move |yielder, mut input| {
+    loop {
+      if input == 0 { break }
+      input = yielder.generate(input + 1)
+    }
+  })
+}
+
 #[test]
 fn generator() {
-  let stack = OsStack::new(0).unwrap();
-  let mut gen = Generator::new(stack, move |yielder| {
-    for i in 1..4 {
-      yielder.generate(i);
-    }
-  });
-  assert_eq!(gen.next(), Some(1));
-  assert_eq!(gen.next(), Some(2));
-  assert_eq!(gen.next(), Some(3));
-  assert_eq!(gen.next(), None);
+  let mut add_one = new_add_one();
+  assert_eq!(add_one.resume(1), Some(2));
+  assert_eq!(add_one.resume(2), Some(3));
+  assert_eq!(add_one.resume(0), None);
 }
 
 #[test]
 fn move_after_new() {
-  let stack = OsStack::new(0).unwrap();
-  let mut gen = Generator::new(stack, move |yielder| {
-    for i in 1..4 {
-      yielder.generate(i);
-    }
-  });
-  assert_eq!(gen.next(), Some(1));
+  let mut add_one = new_add_one();
+  assert_eq!(add_one.resume(1), Some(2));
 
   #[inline(never)]
-  fn rest(mut gen: Generator<u32, OsStack>) {
-    assert_eq!(gen.next(), Some(2));
-    assert_eq!(gen.next(), Some(3));
-    assert_eq!(gen.next(), None);
+  fn run_moved(mut add_one: Generator<i32, i32, OsStack>) {
+    assert_eq!(add_one.resume(2), Some(3));
+    assert_eq!(add_one.resume(3), Some(4));
+    assert_eq!(add_one.resume(0), None);
   }
-  rest(gen);
+  run_moved(add_one);
 }
 
 #[test]
 #[should_panic]
 fn panic_safety() {
   struct Wrapper {
-    gen: Generator<u32, OsStack>
+    gen: Generator<(), (), OsStack>
   }
 
   impl Drop for Wrapper {
     fn drop(&mut self) {
-      self.gen.next();
+      self.gen.resume(());
     }
   }
 
   let stack = OsStack::new(4 << 20).unwrap();
-  let gen = Generator::new(stack, move |_yielder| {
+  let gen = Generator::new(stack, move |_yielder, ()| {
     panic!("foo")
   });
 
   let mut wrapper = Wrapper { gen: gen };
-  wrapper.gen.next();
+  wrapper.gen.resume(());
 }

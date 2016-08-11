@@ -13,7 +13,7 @@ without relying on kernel services. It can be used in hosted environments
 (using `std`) as well as on bare metal (using `core`).
 
 It provides the following safe abstractions:
-  * an implementation of internal iterators, also known as generators,
+  * an implementation of generators,
     [Generator](https://nathan7.github.io/libfringe/fringe/generator/struct.Generator.html).
 
 It also provides the necessary low-level building blocks:
