@@ -18,10 +18,10 @@ use context;
 #[derive(Debug, Clone, Copy)]
 pub enum State {
   /// Generator can be resumed. This is the initial state.
-  Suspended,
+  Runnable,
   /// Generator cannot be resumed. This is the state of the generator after
-  /// the generator function has returned.
-  Finished
+  /// the generator function has returned or panicked.
+  Unavailable
 }
 
 /// Generator wraps a function and allows suspending its execution more than
@@ -38,8 +38,8 @@ pub enum State {
 /// stack using `unwrap()`.
 ///
 /// `state()` can be used to determine whether the generator function has returned;
-/// the state is `State::Suspended` after creation and suspension, and `State::Finished`
-/// once the generator function returns.
+/// the state is `State::Runnable` after creation and suspension, and `State::Unavailable`
+/// once the generator function returns or panics.
 ///
 /// # Example
 ///
@@ -93,7 +93,7 @@ impl<Item, Stack> Generator<Item, Stack>
     }
 
     let mut generator = Generator {
-      state:   State::Suspended,
+      state:   State::Runnable,
       context: context::Context::new(stack, generator_wrapper::<Item, Stack, F>),
       phantom: PhantomData
     };
@@ -113,11 +113,11 @@ impl<Item, Stack> Generator<Item, Stack>
 
   /// Extracts the stack from a generator when the generator function has returned.
   /// If the generator function has not returned
-  /// (i.e. `self.state() == State::Suspended`), panics.
+  /// (i.e. `self.state() == State::Runnable`), panics.
   pub fn unwrap(self) -> Stack {
     match self.state {
-      State::Suspended => panic!("Argh! Bastard! Don't touch that!"),
-      State::Finished  => unsafe { self.context.unwrap() }
+      State::Runnable    => panic!("Argh! Bastard! Don't touch that!"),
+      State::Unavailable => unsafe { self.context.unwrap() }
     }
   }
 }
@@ -171,16 +171,26 @@ impl<Item, Stack> Iterator for Generator<Item, Stack>
   #[inline]
   fn next(&mut self) -> Option<Self::Item> {
     match self.state {
-      State::Suspended => {
+      State::Runnable => {
+        // Set the state to Unavailable. Since we have exclusive access to the generator,
+        // the only case where this matters is the generator function panics, after which
+        // it must not be invocable again.
+        self.state = State::Unavailable;
+
+        // Switch to the generator function.
         let new_context = &mut self.context as *mut context::Context<Stack> as usize;
         let val = unsafe {
           ptr::read(context::Context::swap(&mut self.context, &self.context, new_context)
                     as *mut Option<Item>)
         };
-        if let None = val { self.state = State::Finished }
+
+        // Unless the generator function has returned, it can be switched to again, so
+        // set the state to Runnable.
+        if val.is_some() { self.state = State::Runnable }
+
         val
       }
-      State::Finished => None
+      State::Unavailable => None
     }
   }
 }

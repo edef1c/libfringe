@@ -22,8 +22,6 @@
 //!     [Stack](struct.Stack.html);
 //!   * a stack allocator based on anonymous memory mappings with guard pages,
 //!     [OsStack](struct.OsStack.html).
-//!
-//! **FIXME:** not actually safe yet in presence of unwinding
 
 #[cfg(test)]
 #[macro_use]
