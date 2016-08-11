@@ -61,7 +61,7 @@ pub enum State {
 pub struct Generator<Item: Send, Stack: stack::Stack> {
   state:   State,
   context: context::Context<Stack>,
-  phantom: PhantomData<Item>
+  phantom: PhantomData<*const Item>
 }
 
 impl<Item, Stack> Generator<Item, Stack>
