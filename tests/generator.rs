@@ -38,3 +38,25 @@ fn move_after_new() {
   }
   rest(gen);
 }
+
+#[test]
+#[should_panic]
+fn panic_safety() {
+  struct Wrapper {
+    gen: Generator<u32, OsStack>
+  }
+
+  impl Drop for Wrapper {
+    fn drop(&mut self) {
+      self.gen.next();
+    }
+  }
+
+  let stack = OsStack::new(4 << 20).unwrap();
+  let gen = Generator::new(stack, move |_yielder| {
+    panic!("foo")
+  });
+
+  let mut wrapper = Wrapper { gen: gen };
+  wrapper.gen.next();
+}
