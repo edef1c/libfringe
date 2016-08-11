@@ -3,20 +3,13 @@
 // See the LICENSE file included in this distribution.
 extern crate std;
 extern crate libc;
+
+use self::std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
+use self::std::ptr;
 use self::std::io::Error as IoError;
 use self::libc::{c_void, c_int, size_t};
 use self::libc::{mmap, mprotect, munmap};
 use self::libc::MAP_FAILED;
-use super::page_size;
-
-use core::ptr;
-
-#[cold]
-pub fn sys_page_size() -> usize {
-  unsafe {
-    libc::sysconf(libc::_SC_PAGESIZE) as usize
-  }
-}
 
 const GUARD_PROT:  c_int = libc::PROT_NONE;
 const STACK_PROT:  c_int = libc::PROT_READ
@@ -53,5 +46,24 @@ pub unsafe fn unmap_stack(ptr: *mut u8, len: usize) -> Result<(), IoError> {
     Ok(())
   } else {
     Err(IoError::last_os_error())
+  }
+}
+
+pub fn page_size() -> usize {
+  #[cold]
+  pub fn sys_page_size() -> usize {
+    unsafe {
+      libc::sysconf(libc::_SC_PAGESIZE) as usize
+    }
+  }
+
+  static PAGE_SIZE_CACHE: AtomicUsize = ATOMIC_USIZE_INIT;
+  match PAGE_SIZE_CACHE.load(Ordering::Relaxed) {
+    0 => {
+      let page_size = sys_page_size();
+      PAGE_SIZE_CACHE.store(page_size, Ordering::Relaxed);
+      page_size
+    }
+    page_size => page_size
   }
 }
