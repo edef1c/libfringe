@@ -28,6 +28,14 @@
 //   after. A .cfi_def_* pseudoinstruction changes the CFA value similarly.
 // * Simulating return is as easy as restoring register values from the CFI table
 //   and then setting stack pointer to CFA.
+//
+// A high-level overview of the function of the trampolines is:
+// * The 2nd init trampoline puts a controlled value (written in swap to `new_cfa`)
+//   into %ebx.
+// * The 1st init trampoline tells the unwinder to set %esp to %ebx, thus continuing
+//   unwinding at the swap call site instead of falling off the end of context stack.
+// * The 1st init trampoline together with the swap trampoline also restore %ebp
+//   when unwinding as well as returning normally, because LLVM does not do it for us.
 use stack::Stack;
 
 #[derive(Debug)]
