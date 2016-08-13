@@ -160,6 +160,7 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
   }
 
   /// Returns the state of the generator.
+  #[inline]
   pub fn state(&self) -> State { self.state }
 
   /// Extracts the stack from a generator when the generator function has returned.
