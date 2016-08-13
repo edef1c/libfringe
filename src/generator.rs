@@ -42,6 +42,8 @@ pub enum State {
 /// the state is `State::Runnable` after creation and suspension, and `State::Unavailable`
 /// once the generator function returns or panics.
 ///
+/// When the input type is `()`, a generator implements the Iterator trait.
+///
 /// # Example
 ///
 /// ```
@@ -57,6 +59,20 @@ pub enum State {
 /// println!("{:?}", add_one.resume(2)); // prints Some(3)
 /// println!("{:?}", add_one.resume(3)); // prints Some(4)
 /// println!("{:?}", add_one.resume(0)); // prints None
+/// ```
+///
+/// # Iterator example
+///
+/// ```
+/// use fringe::{OsStack, Generator};
+///
+/// let stack = OsStack::new(0).unwrap();
+/// let mut nat = Generator::new(stack, move |yielder, ()| {
+///   for i in 1.. { yielder.generate(i) }
+/// });
+/// println!("{:?}", nat.next()); // prints Some(0)
+/// println!("{:?}", nat.next()); // prints Some(1)
+/// println!("{:?}", nat.next()); // prints Some(2)
 /// ```
 #[derive(Debug)]
 pub struct Generator<Input: Send, Output: Send, Stack: stack::Stack> {
@@ -197,4 +213,11 @@ impl<Input, Output, Stack> Yielder<Input, Output, Stack>
   pub fn generate(&mut self, item: Output) -> Input {
     self.generate_bare(Some(item))
   }
+}
+
+impl<Output, Stack> Iterator for Generator<(), Output, Stack>
+    where Output: Send, Stack: stack::Stack {
+  type Item = Output;
+
+  fn next(&mut self) -> Option<Self::Item> { self.resume(()) }
 }
