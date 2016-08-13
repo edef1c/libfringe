@@ -1,11 +1,8 @@
 [![travis][travis-badge]][travis-url]
-[![appveyor][appveyor-badge]][appveyor-url]
 [![rustdoc][rustdoc-badge]][rustdoc-url]
 
 [travis-badge]: https://img.shields.io/travis/nathan7/libfringe/master.svg?style=flat-square&label=travis
 [travis-url]: https://travis-ci.org/nathan7/libfringe
-[appveyor-badge]: https://img.shields.io/appveyor/ci/nathan7/libfringe/master.svg?style=flat-square&label=appveyor
-[appveyor-url]: https://ci.appveyor.com/project/nathan7/libfringe
 [rustdoc-badge]: https://img.shields.io/badge/docs-rustdoc-brightgreen.svg?style=flat-square
 [rustdoc-url]: https://nathan7.github.io/libfringe
 
