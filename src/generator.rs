@@ -108,6 +108,7 @@ impl<Item, Stack> Generator<Item, Stack>
   }
 
   /// Returns the state of the generator.
+  #[inline]
   pub fn state(&self) -> State { self.state }
 
   /// Extracts the stack from a generator when the generator function has returned.
