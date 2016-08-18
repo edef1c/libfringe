@@ -8,4 +8,5 @@ pub use self::imp::*;
 #[allow(unused_attributes)] // rust-lang/rust#35584
 #[cfg_attr(target_arch = "x86",    path = "x86.rs")]
 #[cfg_attr(target_arch = "x86_64", path = "x86_64.rs")]
+#[cfg_attr(target_arch = "or1k",   path = "or1k.rs")]
 mod imp;

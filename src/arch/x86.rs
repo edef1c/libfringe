@@ -38,7 +38,7 @@
 //   when unwinding as well as returning normally, because LLVM does not do it for us.
 use stack::Stack;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StackPointer(*mut usize);
 
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
