@@ -5,6 +5,7 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 #![feature(asm, naked_functions)]
+#![cfg_attr(feature = "alloc", feature(alloc))]
 #![cfg_attr(test, feature(test, thread_local, const_fn))]
 #![no_std]
 
@@ -21,6 +22,10 @@
 //!
 //!   * a trait that can be implemented by stack allocators,
 //!     [Stack](struct.Stack.html);
+//!   * a wrapper for using slice references as stacks,
+//!     [SliceStack](struct.SliceStack.html);
+//!   * a stack allocator based on `Box<[u8]>`,
+//!     [OwnedStack](struct.OwnedStack.html);
 //!   * a stack allocator based on anonymous memory mappings with guard pages,
 //!     [OsStack](struct.OsStack.html).
 
@@ -30,9 +35,11 @@ extern crate std;
 
 pub use stack::Stack;
 pub use stack::GuardedStack;
-pub use stack::SliceStack;
-
+pub use slice_stack::SliceStack;
 pub use generator::Generator;
+
+#[cfg(feature = "alloc")]
+pub use owned_stack::OwnedStack;
 
 #[cfg(unix)]
 pub use os::Stack as OsStack;
@@ -40,9 +47,13 @@ pub use os::Stack as OsStack;
 mod arch;
 mod debug;
 
-mod stack;
 mod context;
+mod stack;
+mod slice_stack;
 pub mod generator;
+
+#[cfg(feature = "alloc")]
+mod owned_stack;
 
 #[cfg(unix)]
 mod os;
