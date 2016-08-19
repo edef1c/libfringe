@@ -20,7 +20,8 @@ rev = "7aa8b3fcd3b19994c4669cabc6eae1f96882729d"
 simd = "0.1"
 
 [features]
-default = ["valgrind"]
+default = ["alloc", "valgrind"]
+alloc = []
 
 # These apply only to tests within this library; assembly at -O0 is completely
 # unreadable, so use -O1.

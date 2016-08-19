@@ -19,6 +19,10 @@ It provides the following safe abstractions:
 It also provides the necessary low-level building blocks:
   * a trait that can be implemented by stack allocators,
     [Stack](https://nathan7.github.io/libfringe/fringe/struct.Stack.html);
+  * a wrapper for using slice references as stacks,
+    [SliceStack](https://nathan7.github.io/libfringe/fringe/struct.SliceStack.html);
+  * a stack allocator based on `Box<[u8]>`,
+    [OwnedStack](https://nathan7.github.io/libfringe/fringe/struct.OwnedStack.html);
   * a stack allocator based on anonymous memory mappings with guard pages,
     [OsStack](https://nathan7.github.io/libfringe/fringe/struct.OsStack.html).
 
@@ -136,10 +140,16 @@ no-default-features = true
 libfringe provides some optional features through [Cargo's feature flags].
 Currently, all of them are enabled by default.
 
+#### `alloc`
+
+This flag enables dependency on the `alloc` crate, which is required for
+the [OwnedStack](https://nathan7.github.io/libfringe/fringe/struct.OwnedStack.html).
+
 #### `valgrind`
 
+This flag enables [Valgrind] integration. libfringe will register context stacks with Valgrind.
+
 [Valgrind]: http://valgrind.org
-[Valgrind] integration. libfringe will register context stacks with Valgrind.
 
 ## Internals
 
