@@ -27,6 +27,8 @@ extern crate std;
 
 pub use stack::Stack;
 pub use stack::GuardedStack;
+pub use stack::SliceStack;
+
 pub use generator::Generator;
 
 #[cfg(unix)]

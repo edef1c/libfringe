@@ -3,7 +3,7 @@
 // See the LICENSE file included in this distribution.
 extern crate fringe;
 
-use fringe::OsStack;
+use fringe::{OsStack, SliceStack};
 use fringe::generator::Generator;
 
 fn new_add_one() -> Generator<i32, i32, OsStack> {
@@ -58,4 +58,20 @@ fn panic_safety() {
 
   let mut wrapper = Wrapper { gen: gen };
   wrapper.gen.resume(());
+}
+
+#[test]
+fn with_slice_stack() {
+  let mut memory = [0; 1024];
+  let stack = SliceStack(&mut memory);
+  let mut add_one = unsafe {
+    Generator::unsafe_new(stack, move |yielder, mut input| {
+      loop {
+        if input == 0 { break }
+        input = yielder.generate(input + 1)
+      }
+    })
+  };
+  assert_eq!(add_one.resume(1), Some(2));
+  assert_eq!(add_one.resume(2), Some(3));
 }
