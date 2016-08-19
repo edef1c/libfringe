@@ -122,6 +122,14 @@ Add this to your `Cargo.toml`:
 git = "https://github.com/edef1c/libfringe.git"
 ```
 
+To use libfringe on a bare-metal target, add the `no-default-features` key:
+
+```toml
+[dependencies.fringe]
+git = "https://github.com/edef1c/libfringe.git"
+no-default-features = true
+```
+
 ### Feature flags
 
 [Cargo's feature flags]: http://doc.crates.io/manifest.html#the-[features]-section
