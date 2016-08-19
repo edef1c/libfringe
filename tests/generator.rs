@@ -6,17 +6,19 @@
 // copied, modified, or distributed except according to those terms.
 extern crate fringe;
 
-use fringe::{OsStack, SliceStack};
-use fringe::generator::Generator;
+use fringe::{Stack, SliceStack, OwnedStack, OsStack};
+use fringe::generator::{Generator, Yielder};
+
+fn add_one_fn<S: Stack>(yielder: &mut Yielder<i32, i32, S>, mut input: i32) {
+  loop {
+    if input == 0 { break }
+    input = yielder.suspend(input + 1)
+  }
+}
 
 fn new_add_one() -> Generator<i32, i32, OsStack> {
   let stack = OsStack::new(0).unwrap();
-  Generator::new(stack, move |yielder, mut input| {
-    loop {
-      if input == 0 { break }
-      input = yielder.suspend(input + 1)
-    }
-  })
+  Generator::new(stack, add_one_fn)
 }
 
 #[test]
@@ -67,14 +69,15 @@ fn panic_safety() {
 fn with_slice_stack() {
   let mut memory = [0; 1024];
   let stack = SliceStack(&mut memory);
-  let mut add_one = unsafe {
-    Generator::unsafe_new(stack, move |yielder, mut input| {
-      loop {
-        if input == 0 { break }
-        input = yielder.suspend(input + 1)
-      }
-    })
-  };
+  let mut add_one = unsafe { Generator::unsafe_new(stack, add_one_fn) };
+  assert_eq!(add_one.resume(1), Some(2));
+  assert_eq!(add_one.resume(2), Some(3));
+}
+
+#[test]
+fn with_owned_stack() {
+  let stack = OwnedStack::new(1024);
+  let mut add_one = unsafe { Generator::unsafe_new(stack, add_one_fn) };
   assert_eq!(add_one.resume(1), Some(2));
   assert_eq!(add_one.resume(2), Some(3));
 }
