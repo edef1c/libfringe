@@ -2,6 +2,7 @@
 authors = ["Nathan Zadoks <nathan@nathan7.eu>"]
 name = "fringe"
 version = "0.0.1"
+license = "(Apache-2.0 OR MIT)"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.14"
