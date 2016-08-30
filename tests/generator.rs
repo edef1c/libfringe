@@ -1,5 +1,6 @@
 // This file is part of libfringe, a low-level green threading library.
-// Copyright (c) whitequark <whitequark@whitequark.org>
+// Copyright (c) whitequark <whitequark@whitequark.org>,
+//               edef <edef@edef.eu>
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
@@ -80,4 +81,30 @@ fn with_owned_stack() {
   let mut add_one = unsafe { Generator::unsafe_new(stack, add_one_fn) };
   assert_eq!(add_one.resume(1), Some(2));
   assert_eq!(add_one.resume(2), Some(3));
+}
+
+#[test]
+fn forget_yielded() {
+  struct Dropper(*mut bool);
+
+  unsafe impl Send for Dropper {}
+
+  impl Drop for Dropper {
+    fn drop(&mut self) {
+      unsafe {
+        if *self.0 {
+          panic!("double drop!")
+        }
+        *self.0 = true;
+      }
+    }
+  }
+
+  let stack = fringe::OsStack::new(1<<16).unwrap();
+  let mut generator = Generator::new(stack, |yielder, ()| {
+    let mut flag = false;
+    yielder.suspend(Dropper(&mut flag as *mut bool));
+  });
+  generator.resume(());
+  generator.resume(());
 }
