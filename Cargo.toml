@@ -11,10 +11,6 @@ documentation = "https://nathan7.github.io/libfringe"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.14"
 
-[target.'cfg(windows)'.dependencies]
-kernel32-sys = "0.2.2"
-winapi = "0.2.6"
-
 [dependencies.valgrind_request]
 optional = true
 version = "1.0.0"
