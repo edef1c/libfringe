@@ -14,7 +14,7 @@ use fringe::{OsStack, Generator};
 fn generate(b: &mut test::Bencher) {
   let stack = OsStack::new(0).unwrap();
   let mut identity = Generator::new(stack, move |yielder, mut input| {
-    loop { input = yielder.generate(input) }
+    loop { input = yielder.suspend(input) }
   });
 
   b.iter(|| test::black_box(identity.resume(test::black_box(0))));

@@ -24,7 +24,7 @@ extern {
 fn fpe() {
   let stack = OsStack::new(0).unwrap();
   let mut gen = Generator::new(stack, move |yielder, ()| {
-    yielder.generate(1.0 / black_box(0.0));
+    yielder.suspend(1.0 / black_box(0.0));
   });
 
   unsafe { feenableexcept(FE_DIVBYZERO); }

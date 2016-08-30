@@ -14,7 +14,7 @@ fn new_add_one() -> Generator<i32, i32, OsStack> {
   Generator::new(stack, move |yielder, mut input| {
     loop {
       if input == 0 { break }
-      input = yielder.generate(input + 1)
+      input = yielder.suspend(input + 1)
     }
   })
 }
@@ -71,7 +71,7 @@ fn with_slice_stack() {
     Generator::unsafe_new(stack, move |yielder, mut input| {
       loop {
         if input == 0 { break }
-        input = yielder.generate(input + 1)
+        input = yielder.suspend(input + 1)
       }
     })
   };
