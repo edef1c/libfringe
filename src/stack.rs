@@ -12,7 +12,7 @@ pub trait Stack {
   /// On all modern architectures, the stack grows downwards,
   /// so this is the highest address.
   fn base(&self) -> *mut u8;
-  /// Returns the bottom of the stack.
+  /// Returns the limit of the stack.
   /// On all modern architectures, the stack grows downwards,
   /// so this is the lowest address.
   fn limit(&self) -> *mut u8;
