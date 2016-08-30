@@ -199,6 +199,7 @@ impl<Input, Output, Stack> Yielder<Input, Output, Stack>
     unsafe {
       let data = Context::swap(self.context, self.context,
                                &mut val as *mut Option<Output> as usize);
+      mem::forget(val);
       let (new_context, input) = ptr::read(data as *mut (*mut Context<Stack>, Input));
       // The generator can be moved (and with it, the context).
       // This changes the address of the context.
