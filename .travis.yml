@@ -3,8 +3,8 @@ rust: nightly
 sudo: false
 install:
   - .travis/docs/install
-script: 
-  - cargo build --verbose
+script:
+  - cargo rustc --verbose -- -C llvm-args=-verify-machineinstrs
   - cargo test --verbose
   - cargo bench --verbose
   - cargo doc
