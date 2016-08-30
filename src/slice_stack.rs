@@ -4,6 +4,7 @@
 
 /// SliceStack holds a non-guarded stack allocated elsewhere and provided as a mutable
 /// slice.
+#[derive(Debug)]
 pub struct SliceStack<'a>(pub &'a mut [u8]);
 
 impl<'a> ::stack::Stack for SliceStack<'a> {

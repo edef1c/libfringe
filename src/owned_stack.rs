@@ -7,6 +7,7 @@ use self::alloc::raw_vec::RawVec;
 use self::alloc::boxed::Box;
 
 /// OwnedStack allocates on heap and owns a non-guarded stack.
+#[derive(Debug)]
 pub struct OwnedStack(Box<[u8]>);
 
 impl OwnedStack {
