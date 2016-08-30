@@ -1,8 +1,12 @@
 [package]
 authors = ["edef <edef@edef.eu>"]
 name = "fringe"
+description = "safe, lightweight userland context switches"
 version = "0.0.1"
 license = "(Apache-2.0 OR MIT)"
+homepage = "https://github.com/edef1c/libfringe"
+repository = "https://github.com/edef1c/libfringe"
+documentation = "https://edef1c.github.io/libfringe"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.14"
