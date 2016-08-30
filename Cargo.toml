@@ -11,10 +11,9 @@ libc = "0.2.14"
 kernel32-sys = "0.2.2"
 winapi = "0.2.6"
 
-[dependencies.valgrind]
+[dependencies.valgrind_request]
 optional = true
-git = "https://github.com/nathan7/libvalgrind"
-rev = "7aa8b3fcd3b19994c4669cabc6eae1f96882729d"
+version = "1.0.0"
 
 [dev-dependencies]
 simd = "0.1"
@@ -22,6 +21,7 @@ simd = "0.1"
 [features]
 default = ["alloc", "valgrind"]
 alloc = []
+valgrind = ["valgrind_request"]
 
 # These apply only to tests within this library; assembly at -O0 is completely
 # unreadable, so use -O1.
