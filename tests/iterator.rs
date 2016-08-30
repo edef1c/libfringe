@@ -13,7 +13,7 @@ use fringe::generator::Generator;
 fn producer() {
   let stack = OsStack::new(0).unwrap();
   let mut gen = Generator::new(stack, move |yielder, ()| {
-    for i in 0.. { yielder.generate(i) }
+    for i in 0.. { yielder.suspend(i) }
   });
   assert_eq!(gen.next(), Some(0));
   assert_eq!(gen.next(), Some(1));

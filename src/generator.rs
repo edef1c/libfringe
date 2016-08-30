@@ -30,9 +30,9 @@ pub enum State {
 /// a value each time.
 ///
 /// The first time `resume(input0)` is called, the function is called as `f(yielder, input0)`.
-/// It runs until it suspends its execution through `yielder.generate(output0)`, after which
+/// It runs until it suspends its execution through `yielder.suspend(output0)`, after which
 /// `resume(input0)` returns `output0`. The function can be resumed again using `resume(input1)`,
-/// after which `yielder.generate(output0)` returns `input1`, and so on. Once the function returns,
+/// after which `yielder.suspend(output0)` returns `input1`, and so on. Once the function returns,
 /// the `resume()` call will return `None`, and it will return `None` every time it is called
 /// after that.
 ///
@@ -56,7 +56,7 @@ pub enum State {
 /// let mut add_one = Generator::new(stack, move |yielder, mut input| {
 ///   loop {
 ///     if input == 0 { break }
-///     input = yielder.generate(input + 1)
+///     input = yielder.suspend(input + 1)
 ///   }
 /// });
 /// println!("{:?}", add_one.resume(2)); // prints Some(3)
@@ -71,7 +71,7 @@ pub enum State {
 ///
 /// let stack = OsStack::new(0).unwrap();
 /// let mut nat = Generator::new(stack, move |yielder, ()| {
-///   for i in 1.. { yielder.generate(i) }
+///   for i in 1.. { yielder.suspend(i) }
 /// });
 /// println!("{:?}", nat.next()); // prints Some(0)
 /// println!("{:?}", nat.next()); // prints Some(1)
@@ -106,13 +106,13 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
       // Retrieve our environment from the callee and return control to it.
       let (mut yielder, f) = ptr::read(env as *mut (Yielder<Input, Output, Stack>, F));
       let data = Context::swap(yielder.context, yielder.context, 0);
-      // See the second half of Yielder::generate_bare.
+      // See the second half of Yielder::suspend_bare.
       let (new_context, input) = ptr::read(data as *mut (*mut Context<Stack>, Input));
       yielder.context = new_context as *mut Context<Stack>;
       // Run the body of the generator.
       f(&mut yielder, input);
       // Past this point, the generator has dropped everything it has held.
-      loop { yielder.generate_bare(None); }
+      loop { yielder.suspend_bare(None); }
     }
 
     let mut generator = Generator {
@@ -195,7 +195,7 @@ impl<Input, Output, Stack> Yielder<Input, Output, Stack>
   }
 
   #[inline(always)]
-  fn generate_bare(&mut self, mut val: Option<Output>) -> Input {
+  fn suspend_bare(&mut self, mut val: Option<Output>) -> Input {
     unsafe {
       let data = Context::swap(self.context, self.context,
                                &mut val as *mut Option<Output> as usize);
@@ -204,7 +204,7 @@ impl<Input, Output, Stack> Yielder<Input, Output, Stack>
       // This changes the address of the context.
       // Thus, we update it after each swap.
       self.context = new_context;
-      // However, between this point and the next time we enter generate_bare
+      // However, between this point and the next time we enter suspend_bare
       // the generator cannot be moved, as a &mut Generator is necessary
       // to resume the generator function.
       input
@@ -214,8 +214,8 @@ impl<Input, Output, Stack> Yielder<Input, Output, Stack>
   /// Suspends the generator and returns `Some(item)` from the `resume()`
   /// invocation that resumed the generator.
   #[inline(always)]
-  pub fn generate(&mut self, item: Output) -> Input {
-    self.generate_bare(Some(item))
+  pub fn suspend(&mut self, item: Output) -> Input {
+    self.suspend_bare(Some(item))
   }
 }
 
