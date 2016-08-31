@@ -17,13 +17,13 @@ use self::libc::MAP_FAILED;
 const GUARD_PROT:  c_int = libc::PROT_NONE;
 const STACK_PROT:  c_int = libc::PROT_READ
                          | libc::PROT_WRITE;
-#[cfg(not(any(target_os = "freebsd", target_os = "dragonfly")))]
+#[cfg(not(any(target_os = "freebsd", target_os = "dragonfly", target_vendor = "apple")))]
 const STACK_FLAGS: c_int = libc::MAP_STACK
                          | libc::MAP_PRIVATE
                          | libc::MAP_ANON;
 // workaround for http://lists.freebsd.org/pipermail/freebsd-bugs/2011-July/044840.html
 // according to libgreen, DragonFlyBSD suffers from this too
-#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+#[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_vendor = "apple"))]
 const STACK_FLAGS: c_int = libc::MAP_PRIVATE
                          | libc::MAP_ANON;
 

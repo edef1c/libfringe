@@ -49,6 +49,7 @@ use stack::Stack;
 pub struct StackPointer(*mut usize);
 
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
+  #[cfg(not(target_vendor = "apple"))]
   #[naked]
   unsafe extern "C" fn trampoline_1() {
     asm!(
@@ -77,6 +78,21 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
       : : "s" (trampoline_2 as usize) : "memory" : "volatile")
   }
 
+  #[cfg(target_vendor = "apple")]
+  #[naked]
+  unsafe extern "C" fn trampoline_1() {
+    asm!(
+      r#"
+        # Same as above; however, .local and .size are not supported in Mach-O.
+      __morestack:
+      .private_extern __morestack
+        .cfi_def_cfa %rbx, 0
+        .cfi_offset %rbp, -16
+        call   ${0:c}
+      "#
+      : : "s" (trampoline_2 as usize) : "memory" : "volatile")
+  }
+
   #[naked]
   unsafe extern "C" fn trampoline_2() {
     asm!(
@@ -84,7 +100,16 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
         # Set up the second part of our DWARF CFI.
         # When unwinding the frame corresponding to this function, a DWARF unwinder
         # will restore %rbx (and thus CFA of the first trampoline) from the stack slot.
-        .cfi_offset %rbx, 16
+        #
+        # The following is functionally equivalent to:
+        # .cfi_offset %rbx, 16
+        # however positive offsets in .cfi_offset translate to DW_CFA_offset_extended_sf,
+        # and ld64's CFI parser only supports regular DW_CFA_offset (which only supports
+        # negative offsets, with the sign being implicit), so to avoid crashing the linker
+        # on OS X, fold offset into  DW_CFA_def_offset.
+        .cfi_def_cfa_offset 24
+        .cfi_offset %rip, -24
+        .cfi_offset %rbx, 0
         # Call the provided function.
         call    *8(%rsp)
       "#
