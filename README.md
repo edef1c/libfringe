@@ -115,7 +115,7 @@ there should be at least 8 KiB of free stack space, or panicking will result in 
 
 ## Limitations
 
-The architectures currently supported are: x86, x86_64, or1k.
+The architectures currently supported are: arm, x86, x86_64, or1k.
 Windows is not supported (see [explanation](#windows-compatibility) below).
 
 ## Installation
@@ -170,13 +170,15 @@ of callee-saved registers.
 
 ### Call stack splicing
 
-Non-Windows platforms use [DWARF][] for both stack unwinding and debugging. DWARF call frame
-information is very generic to be ABI-agnostic—it defines a bytecode that describes the actions
-that need to be performed to simulate returning from a function. libfringe uses this bytecode
-to specify that, after the generator function has returned, execution continues at the point
-where the generator function was resumed the last time.
+Non-Windows platforms use [DWARF][] (or the highly similar [ARM EHABI][ehabi]) for both stack
+unwinding and debugging. DWARF call frame information is very generic to be ABI-agnostic—
+it defines a bytecode that describes the actions that need to be performed to simulate
+returning from a function. libfringe uses this bytecode to specify that, after the generator
+function has returned, execution continues at the point where the generator function was
+resumed the last time.
 
 [dwarf]: http://dwarfstd.org
+[ehabi]: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
 
 ## Windows compatibility
 

@@ -59,6 +59,8 @@ impl<OldStack> Context<OldStack> where OldStack: stack::Stack {
 #[cfg(test)]
 mod test {
   extern crate test;
+  #[cfg(any(target_arch = "x86",
+            target_arch = "x86_64"))]
   extern crate simd;
 
   use std::ptr;
@@ -90,6 +92,8 @@ mod test {
     }
   }
 
+  #[cfg(any(target_arch = "x86",
+            target_arch = "x86_64"))]
   #[test]
   fn context_simd() {
     unsafe extern "C" fn permuter(arg: usize) -> ! {
