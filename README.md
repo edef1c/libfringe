@@ -1,6 +1,9 @@
+[![crates][crates-badge]][crates-url]
 [![travis][travis-badge]][travis-url]
 [![rustdoc][rustdoc-badge]][rustdoc-url]
 
+[crates-badge]: https://img.shields.io/crates/v/fringe.svg?style=flat-square
+[crates-url]: https://crates.io/crates/fringe
 [travis-badge]: https://img.shields.io/travis/nathan7/libfringe/master.svg?style=flat-square&label=travis
 [travis-url]: https://travis-ci.org/nathan7/libfringe
 [rustdoc-badge]: https://img.shields.io/badge/docs-rustdoc-brightgreen.svg?style=flat-square
