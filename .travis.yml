@@ -1,5 +1,8 @@
 language: rust
 rust: nightly
+os:
+  - linux
+  - osx
 sudo: false
 install:
   - .travis/docs/install
