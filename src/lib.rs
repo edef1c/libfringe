@@ -4,7 +4,7 @@
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
-#![feature(asm, naked_functions)]
+#![feature(asm, naked_functions, cfg_target_vendor)]
 #![cfg_attr(feature = "alloc", feature(alloc))]
 #![cfg_attr(test, feature(test, thread_local, const_fn))]
 #![no_std]
