@@ -118,19 +118,18 @@ Windows is not supported (see [explanation](#windows-compatibility) below).
 ## Installation
 
 libfringe is a [Cargo](https://crates.io) package.
-It's not stable software yet, so you'll have to use it as a git dependency.
 Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies.fringe]
-git = "https://github.com/nathan7/libfringe.git"
+version = "1.0.2"
 ```
 
 To use libfringe on a bare-metal target, add the `no-default-features` key:
 
 ```toml
 [dependencies.fringe]
-git = "https://github.com/nathan7/libfringe.git"
+version = "1.0.2"
 no-default-features = true
 ```
 
