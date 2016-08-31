@@ -199,12 +199,13 @@ unacceptable.
 [TIB]: https://en.wikipedia.org/wiki/Win32_Thread_Information_Block
 [tibfail]: https://svn.boost.org/trac/boost/ticket/8544
 
-The only supported way to implement user-mode context switching on Windows is to use [fibers][].
+The only supported ways to implement user-mode context switching on Windows are [fibers][] and [UMS threads][].
 There are no reasons the safe abstractions provided by libfringe could not be implemented on top
 of that; it is simply not yet done. This should be straightforward and an implementation is
 welcome.
 
 [fibers]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms682661(v=vs.85).aspx
+[UMS threads]: https://msdn.microsoft.com/en-us/library/windows/desktop/dd627187(v=vs.85).aspx
 
 ## License
 
