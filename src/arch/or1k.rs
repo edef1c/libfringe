@@ -59,7 +59,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
         # Set up the first part of our DWARF CFI linking stacks together.
         # When unwinding the frame corresponding to this function, a DWARF unwinder
         # will use r13 as the next call frame address, restore return address (r9)
-        # from CFA-4 and restore stack pointer (r2) from CFA-8.
+        # from CFA-4 and restore frame pointer (r2) from CFA-8.
         # This mirrors what the second half of `swap_trampoline` does.
         .cfi_def_cfa r13, 0
         .cfi_offset r2, -8
