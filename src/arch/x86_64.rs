@@ -77,7 +77,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
       .Lend:
       .size __morestack, .Lend-__morestack
       "#
-      : : "s" (trampoline_2 as usize) : "memory" : "volatile")
+      : : "s" (trampoline_2 as usize) : : "volatile")
   }
 
   #[cfg(target_vendor = "apple")]
@@ -92,7 +92,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
         .cfi_offset %rbp, -16
         call   ${0:c}
       "#
-      : : "s" (trampoline_2 as usize) : "memory" : "volatile")
+      : : "s" (trampoline_2 as usize) : : "volatile")
   }
 
   #[naked]
@@ -115,7 +115,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
         # Call the provided function.
         call    *8(%rsp)
       "#
-      : : : "memory" : "volatile")
+      : : : : "volatile")
   }
 
   unsafe fn push(sp: &mut StackPointer, val: usize) {
@@ -162,7 +162,7 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: *const StackPo
         popq    %rbx
         jmpq    *%rbx
       "#
-      : : : "memory" : "volatile")
+      : : : : "volatile")
   }
 
   let ret: usize;
