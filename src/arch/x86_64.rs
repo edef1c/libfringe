@@ -133,7 +133,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
 }
 
 #[inline(always)]
-pub unsafe fn swap(arg: usize, old_sp: &mut StackPointer, new_sp: &StackPointer,
+pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: *const StackPointer,
                    new_stack: &Stack) -> usize {
   // Address of the topmost CFA stack slot.
   let new_cfa = (new_stack.base() as *mut usize).offset(-1);
