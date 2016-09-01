@@ -2,7 +2,7 @@
 authors = ["Nathan Zadoks <nathan@nathan7.eu>"]
 name = "fringe"
 description = "safe, lightweight userland context switches"
-version = "1.0.3"
+version = "1.0.4"
 license = "Apache-2.0/MIT"
 homepage = "https://github.com/nathan7/libfringe"
 repository = "https://github.com/nathan7/libfringe"
