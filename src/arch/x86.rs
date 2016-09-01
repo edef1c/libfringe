@@ -72,7 +72,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
       .Lend:
       .size __morestack, .Lend-__morestack
       "#
-      : : "s" (trampoline_2 as usize) : "memory" : "volatile")
+      : : "s" (trampoline_2 as usize) : : "volatile")
   }
 
   #[naked]
@@ -89,7 +89,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
         # Call the provided function.
         call    *8(%esp)
       "#
-      : : : "memory" : "volatile")
+      : : : : "volatile")
   }
 
   unsafe fn push(sp: &mut StackPointer, val: usize) {
@@ -135,7 +135,7 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: *const StackPo
         popl    %ebx
         jmpl    *%ebx
       "#
-      : : : "memory" : "volatile")
+      : : : : "volatile")
   }
 
   let ret: usize;
