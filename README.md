@@ -42,7 +42,7 @@ use fringe::{OsStack, Generator};
 fn main() {
   let stack = OsStack::new(1 << 16).unwrap();
   let mut gen = Generator::new(stack, move |yielder, ()| {
-    for i in 1..4 { yielder.generate(i) }
+    for i in 1..4 { yielder.suspend(i) }
   });
 
   println!("{:?}", gen.resume(())); // Some(1)
@@ -74,7 +74,7 @@ fn main() {
   let stack = OsStack::new(1 << 16).unwrap();
   let mut gen = Generator::new(stack, move |yielder, mut index| {
     let values = [1, 2, 3];
-    loop { index = yielder.generate(values[index]) }
+    loop { index = yielder.suspend(values[index]) }
   });
 
   println!("{:?}", gen.resume(5));
