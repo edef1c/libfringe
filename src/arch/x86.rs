@@ -154,9 +154,9 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: *const StackPo
       "{edx}" (new_sp)
       "{edi}" (new_cfa)
     :/*"eax",*/"ebx", "ecx",  "edx",  "esi",  "edi",/*"ebp",  "esp",*/
-      "mmx0", "mmx1", "mmx2", "mmx3", "mmx4", "mmx5", "mmx6", "mmx7",
+      "mm0",  "mm1",  "mm2",  "mm3",  "mm4",  "mm5",  "mm6",  "mm7",
       "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7",
-      "cc", "fpsr", "flags", "memory"
+      "cc", "dirflag", "fpsr", "flags", "memory"
     : "volatile");
   ret
 }
