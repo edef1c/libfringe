@@ -8,7 +8,7 @@ use self::alloc::boxed::Box;
 
 /// OwnedStack allocates on heap and owns a non-guarded stack.
 #[derive(Debug)]
-pub struct OwnedStack(Box<[u8]>);
+pub struct OwnedStack(pub Box<[u8]>);
 
 impl OwnedStack {
     /// Allocates a new stack with exactly `size` accessible bytes using
