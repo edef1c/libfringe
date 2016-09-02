@@ -9,7 +9,7 @@ use self::alloc::boxed::Box;
 
 /// OwnedStack holds a non-guarded, heap-allocated stack.
 #[derive(Debug)]
-pub struct OwnedStack(Box<[u8]>);
+pub struct OwnedStack(pub Box<[u8]>);
 
 impl OwnedStack {
     /// Allocates a new stack with exactly `size` accessible bytes and alignment appropriate
