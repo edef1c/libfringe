@@ -40,6 +40,8 @@
 //   when unwinding as well as returning normally, because LLVM does not do it for us.
 use stack::Stack;
 
+pub const STACK_ALIGNMENT: usize = 4;
+
 #[derive(Debug, Clone)]
 pub struct StackPointer(*mut usize);
 

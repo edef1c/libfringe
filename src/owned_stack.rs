@@ -3,18 +3,22 @@
 // See the LICENSE file included in this distribution.
 extern crate alloc;
 
-use self::alloc::raw_vec::RawVec;
+use core::slice;
+use self::alloc::heap;
 use self::alloc::boxed::Box;
 
-/// OwnedStack allocates on heap and owns a non-guarded stack.
+/// OwnedStack holds a non-guarded, heap-allocated stack.
 #[derive(Debug)]
 pub struct OwnedStack(pub Box<[u8]>);
 
 impl OwnedStack {
-    /// Allocates a new stack with exactly `size` accessible bytes using
-    /// the default Rust allocator.
+    /// Allocates a new stack with exactly `size` accessible bytes and alignment appropriate
+    /// for the current platform using the default Rust allocator.
     pub fn new(size: usize) -> OwnedStack {
-        OwnedStack(unsafe { RawVec::with_capacity(size).into_box() })
+        unsafe {
+            let ptr = heap::allocate(size, ::STACK_ALIGNMENT);
+            OwnedStack(Box::from_raw(slice::from_raw_parts_mut(ptr, size)))
+        }
     }
 }
 
