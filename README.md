@@ -115,7 +115,7 @@ there should be at least 8 KiB of free stack space, or panicking will result in 
 
 ## Limitations
 
-The architectures currently supported are: x86, x86_64, or1k.
+The architectures currently supported are: x86, x86_64, aarch64, or1k.
 
 The platforms currently supported are: bare metal, Linux (any libc),
 FreeBSD, DragonFly BSD, macOS.
