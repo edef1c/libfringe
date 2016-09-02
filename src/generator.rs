@@ -87,6 +87,8 @@ pub struct Generator<Input: Send, Output: Send, Stack: stack::Stack> {
 impl<Input, Output, Stack> Generator<Input, Output, Stack>
     where Input: Send, Output: Send, Stack: stack::Stack {
   /// Creates a new generator.
+  ///
+  /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
   pub fn new<F>(stack: Stack, f: F) -> Generator<Input, Output, Stack>
       where Stack: stack::GuardedStack,
             F: FnOnce(&mut Yielder<Input, Output, Stack>, Input) + Send {
@@ -98,6 +100,8 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
   /// This function is unsafe because the generator function can easily violate
   /// memory safety by overflowing the stack. It is useful in environments where
   /// guarded stacks do not exist, e.g. in absence of an MMU.
+  ///
+  /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
   pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<Input, Output, Stack>
       where F: FnOnce(&mut Yielder<Input, Output, Stack>, Input) + Send {
     unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize) -> !

@@ -7,6 +7,15 @@
 //! Traits for stacks.
 
 /// A trait for objects that hold ownership of a stack.
+///
+/// To preserve memory safety, an implementation of this trait must fulfill
+/// the following contract:
+///
+///   * The base of the stack must be aligned to a platform-specific boundary.
+///   * Every address between the base and the limit must be readable and writable.
+///
+/// On any platform supported by libfringe, it is safe to align the stack to a 16-byte boundary.
+/// The platform ABI document lists the specific alignment requirement.
 pub trait Stack {
   /// Returns the base of the stack.
   /// On all modern architectures, the stack grows downwards,
@@ -20,6 +29,9 @@ pub trait Stack {
 
 /// A marker trait for `Stack` objects with a guard page.
 ///
-/// A guarded stack must guarantee that any access of data at addresses `limit()` to
-/// `limit().offset(4096)` will abnormally terminate the program.
+/// To preserve memory safety, an implementation of this trait must fulfill
+/// the following contract, in addition to the [contract](trait.Stack.html) of `Stack`:
+///
+///   * Any access of data at addresses `limit()` to `limit().offset(4096)` must
+///     abnormally terminate, at least, the thread that performs the access.
 pub unsafe trait GuardedStack {}
