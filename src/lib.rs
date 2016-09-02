@@ -5,7 +5,7 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 #![feature(asm, naked_functions, cfg_target_vendor)]
-#![cfg_attr(feature = "alloc", feature(alloc))]
+#![cfg_attr(feature = "alloc", feature(alloc, heap_api))]
 #![cfg_attr(test, feature(test, thread_local, const_fn))]
 #![no_std]
 
@@ -45,6 +45,10 @@ pub use owned_stack::OwnedStack;
 pub use os::Stack as OsStack;
 
 mod arch;
+
+/// Minimum alignment of a stack base address on the target platform.
+pub const STACK_ALIGNMENT: usize = arch::STACK_ALIGNMENT;
+
 mod debug;
 
 mod context;
