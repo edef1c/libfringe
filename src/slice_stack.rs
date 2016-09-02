@@ -2,8 +2,10 @@
 // Copyright (c) whitequark <whitequark@whitequark.org>
 // See the LICENSE file included in this distribution.
 
-/// SliceStack holds a non-guarded stack allocated elsewhere and provided as a mutable
-/// slice.
+/// SliceStack holds a non-guarded stack allocated elsewhere and provided as a mutable slice.
+///
+/// Any slice used in a SliceStack must adhere to the [Stack contract][contract].
+/// [contract]: trait.Stack.html
 #[derive(Debug)]
 pub struct SliceStack<'a>(pub &'a mut [u8]);
 
