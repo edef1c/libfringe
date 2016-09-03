@@ -15,30 +15,6 @@
 // * i686 SysV C ABI passes the first argument on the stack. This is
 //   unfortunate, because unlike every other architecture we can't reuse
 //   `swap` for the initial call, and so we use a trampoline.
-//
-// To understand the DWARF CFI code in this file, keep in mind these facts:
-// * CFI is "call frame information"; a set of instructions to a debugger or
-//   an unwinder that allow it to simulate returning from functions. This implies
-//   restoring every register to its pre-call state, as well as the stack pointer.
-// * CFA is "call frame address"; the value of stack pointer right before the call
-//   instruction in the caller. Everything strictly below CFA (and inclusive until
-//   the next CFA) is the call frame of the callee. This implies that the return
-//   address is the part of callee's call frame.
-// * Logically, DWARF CFI is a table where rows are instruction pointer values and
-//   columns describe where registers are spilled (mostly using expressions that
-//   compute a memory location as CFA+n). A .cfi_offset pseudoinstruction changes
-//   the state of a column for all IP numerically larger than the one it's placed
-//   after. A .cfi_def_* pseudoinstruction changes the CFA value similarly.
-// * Simulating return is as easy as restoring register values from the CFI table
-//   and then setting stack pointer to CFA.
-//
-// A high-level overview of the function of the trampolines is:
-// * The 2nd init trampoline puts a controlled value (written in swap to `new_cfa`)
-//   into %ebx.
-// * The 1st init trampoline tells the unwinder to set %esp to %ebx, thus continuing
-//   unwinding at the swap call site instead of falling off the end of context stack.
-// * The 1st init trampoline together with the swap trampoline also restore %ebp
-//   when unwinding as well as returning normally, because LLVM does not do it for us.
 use stack::Stack;
 
 pub const STACK_ALIGNMENT: usize = 16;
@@ -48,7 +24,7 @@ pub struct StackPointer(*mut usize);
 
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
   #[naked]
-  unsafe extern "C" fn trampoline_1() {
+  unsafe extern "C" fn trampoline() {
     asm!(
       r#"
         # gdb has a hardcoded check that rejects backtraces where frame addresses
@@ -59,35 +35,23 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
       __morestack:
       .local __morestack
 
-        # Set up the first part of our DWARF CFI linking stacks together.
-        # When unwinding the frame corresponding to this function, a DWARF unwinder
-        # will use %ebx as the next call frame address, restore return address
-        # from CFA-4 and restore %ebp from CFA-8. This mirrors what the second half
-        # of `swap_trampoline` does.
-        .cfi_def_cfa %ebx, 0
+        # When a normal function is entered, the return address is pushed onto the stack,
+        # and the first thing it does is pushing the frame pointer. The init trampoline
+        # is not a normal function; on entry the stack pointer is one word above the place
+        # where the return address should be, and right under it the return address as
+        # well as the stack pointer are already pre-filled. So, simply move the stack
+        # pointer where it belongs; and add CFI just like in any other function prologue.
+        subl   $$8, %esp
+        .cfi_def_cfa_offset 8
         .cfi_offset %ebp, -8
-        # Call the next trampoline.
-        call   ${0:c}
+        movl   %esp, %ebp
+        .cfi_def_cfa_register %ebp
+        # Call f.
+        pushl  %eax
+        calll  *12(%esp)
 
       .Lend:
       .size __morestack, .Lend-__morestack
-      "#
-      : : "s" (trampoline_2 as usize) : : "volatile")
-  }
-
-  #[naked]
-  unsafe extern "C" fn trampoline_2() {
-    asm!(
-      r#"
-        # Set up the second part of our DWARF CFI.
-        # When unwinding the frame corresponding to this function, a DWARF unwinder
-        # will restore %ebx (and thus CFA of the first trampoline) from the stack slot.
-        .cfi_offset %ebx, 4
-        # Push argument.
-        .cfi_def_cfa_offset 8
-        pushl   %eax
-        # Call the provided function.
-        call    *8(%esp)
       "#
       : : : : "volatile")
   }
@@ -98,10 +62,9 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
   }
 
   let mut sp = StackPointer(stack.base() as *mut usize);
-  push(&mut sp, 0xdead0cfa); // CFA slot
-  push(&mut sp, f as usize); // function
-  push(&mut sp, trampoline_1 as usize);
-  push(&mut sp, 0xdeadbbbb); // saved %ebp
+  push(&mut sp, f as usize);          // function
+  push(&mut sp, trampoline as usize); // trampoline   / linked return address
+  push(&mut sp, 0xdead0bbb);          // initial %ebp / linked %ebp
   sp
 }
 
@@ -109,12 +72,19 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
 pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
                    new_stack: &Stack) -> usize {
   // Address of the topmost CFA stack slot.
-  let new_cfa = (new_stack.base() as *mut usize).offset(-1);
+  let new_cfa = (new_stack.base() as *mut usize).offset(-3);
 
   #[naked]
   unsafe extern "C" fn trampoline() {
     asm!(
       r#"
+        # Remember the frame and instruction pointers in the callee, to link
+        # the stacks together later. We put them on stack because x86 doesn't
+        # have enough registers.
+        movl    %ebp, -8(%edx)
+        movl    (%esp), %ebx
+        movl    %ebx, -12(%edx)
+
         # Save frame pointer explicitly; the unwinder uses it to find CFA of
         # the caller, and so it has to have the correct value immediately after
         # the call instruction that invoked the trampoline.
@@ -125,12 +95,20 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
         # Load stack pointer of the new context.
         movl    %edx, %esp
 
-        # Restore frame pointer of the new context.
+        # Load frame and instruction pointers of the new context.
         popl    %ebp
-
-        # Return into the new context. Use `pop` and `jmp` instead of a `ret`
-        # to avoid return address mispredictions (~8ns per `ret` on Ivy Bridge).
         popl    %ebx
+
+        # Put the frame and instruction pointers into the trampoline stack frame,
+        # making it appear to return right after the call instruction that invoked
+        # this trampoline. This is done after the loads above, since on the very first
+        # swap, the saved %ebp/%ebx intentionally alias 0(%edi)/4(%edi).
+        movl    -8(%edx), %esi
+        movl    %esi, 0(%edi)
+        movl    -12(%edx), %esi
+        movl    %esi, 4(%edi)
+
+        # Return into new context.
         jmpl    *%ebx
       "#
       : : : : "volatile")
@@ -139,8 +117,6 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
   let ret: usize;
   asm!(
     r#"
-      # Link the call stacks together.
-      movl    %esp, (%edi)
       # Push instruction pointer of the old context and switch to
       # the new context.
       call    ${1:c}
