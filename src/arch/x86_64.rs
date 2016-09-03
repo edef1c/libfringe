@@ -19,30 +19,6 @@
 //   to pass a value while swapping context; this is an arbitrary choice
 //   (we clobber all registers and could use any of them) but this allows us
 //   to reuse the swap function to perform the initial call.
-//
-// To understand the DWARF CFI code in this file, keep in mind these facts:
-// * CFI is "call frame information"; a set of instructions to a debugger or
-//   an unwinder that allow it to simulate returning from functions. This implies
-//   restoring every register to its pre-call state, as well as the stack pointer.
-// * CFA is "call frame address"; the value of stack pointer right before the call
-//   instruction in the caller. Everything strictly below CFA (and inclusive until
-//   the next CFA) is the call frame of the callee. This implies that the return
-//   address is the part of callee's call frame.
-// * Logically, DWARF CFI is a table where rows are instruction pointer values and
-//   columns describe where registers are spilled (mostly using expressions that
-//   compute a memory location as CFA+n). A .cfi_offset pseudoinstruction changes
-//   the state of a column for all IP numerically larger than the one it's placed
-//   after. A .cfi_def_* pseudoinstruction changes the CFA value similarly.
-// * Simulating return is as easy as restoring register values from the CFI table
-//   and then setting stack pointer to CFA.
-//
-// A high-level overview of the function of the trampolines is:
-// * The 2nd init trampoline puts a controlled value (written in swap to `new_cfa`)
-//   into %rbx.
-// * The 1st init trampoline tells the unwinder to set %rsp to %rbx, thus continuing
-//   unwinding at the swap call site instead of falling off the end of context stack.
-// * The 1st init trampoline together with the swap trampoline also restore %rbp
-//   when unwinding as well as returning normally, because LLVM does not do it for us.
 use stack::Stack;
 
 pub const STACK_ALIGNMENT: usize = 16;
@@ -51,9 +27,8 @@ pub const STACK_ALIGNMENT: usize = 16;
 pub struct StackPointer(*mut usize);
 
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
-  #[cfg(not(target_vendor = "apple"))]
   #[naked]
-  unsafe extern "C" fn trampoline_1() {
+  unsafe extern "C" fn trampoline() {
     asm!(
       r#"
         # gdb has a hardcoded check that rejects backtraces where frame addresses
@@ -64,56 +39,22 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
       __morestack:
       .local __morestack
 
-        # Set up the first part of our DWARF CFI linking stacks together.
-        # When unwinding the frame corresponding to this function, a DWARF unwinder
-        # will use %rbx as the next call frame address, restore return address
-        # from CFA-8 and restore %rbp from CFA-16. This mirrors what the second half
-        # of `swap_trampoline` does.
-        .cfi_def_cfa %rbx, 0
+        # When a normal function is entered, the return address is pushed onto the stack,
+        # and the first thing it does is pushing the frame pointer. The init trampoline
+        # is not a normal function; on entry the stack pointer is one word above the place
+        # where the return address should be, and right under it the return address as
+        # well as the stack pointer are already pre-filled. So, simply move the stack
+        # pointer where it belongs; and add CFI just like in any other function prologue.
+        subq   $$16, %rsp
+        .cfi_def_cfa_offset 16
         .cfi_offset %rbp, -16
-        # Call the next trampoline.
-        call   ${0:c}
+        movq   %rsp, %rbp
+        .cfi_def_cfa_register %rbp
+        # Call f.
+        callq  *16(%rsp)
 
       .Lend:
       .size __morestack, .Lend-__morestack
-      "#
-      : : "s" (trampoline_2 as usize) : : "volatile")
-  }
-
-  #[cfg(target_vendor = "apple")]
-  #[naked]
-  unsafe extern "C" fn trampoline_1() {
-    asm!(
-      r#"
-        # Same as above; however, .local and .size are not supported in Mach-O.
-      __morestack:
-      .private_extern __morestack
-        .cfi_def_cfa %rbx, 0
-        .cfi_offset %rbp, -16
-        call   ${0:c}
-      "#
-      : : "s" (trampoline_2 as usize) : : "volatile")
-  }
-
-  #[naked]
-  unsafe extern "C" fn trampoline_2() {
-    asm!(
-      r#"
-        # Set up the second part of our DWARF CFI.
-        # When unwinding the frame corresponding to this function, a DWARF unwinder
-        # will restore %rbx (and thus CFA of the first trampoline) from the stack slot.
-        #
-        # The following is functionally equivalent to:
-        # .cfi_offset %rbx, 16
-        # however positive offsets in .cfi_offset translate to DW_CFA_offset_extended_sf,
-        # and ld64's CFI parser only supports regular DW_CFA_offset (which only supports
-        # negative offsets, with the sign being implicit), so to avoid crashing the linker
-        # on OS X, fold offset into  DW_CFA_def_offset.
-        .cfi_def_cfa_offset 24
-        .cfi_offset %rip, -24
-        .cfi_offset %rbx, 0
-        # Call the provided function.
-        call    *8(%rsp)
       "#
       : : : : "volatile")
   }
@@ -124,11 +65,10 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
   }
 
   let mut sp = StackPointer(stack.base() as *mut usize);
-  push(&mut sp, 0xdeaddeaddead0cfa); // CFA slot
-  push(&mut sp, 0 as usize); // alignment
-  push(&mut sp, f as usize); // function
-  push(&mut sp, trampoline_1 as usize);
-  push(&mut sp, 0xdeaddeaddeadbbbb); // saved %rbp
+  push(&mut sp, 0 as usize);          // alignment
+  push(&mut sp, f as usize);          // function
+  push(&mut sp, trampoline as usize); // trampoline   / linked return address
+  push(&mut sp, 0xdeaddeaddead0bbb);  // initial %rbp / linked %rbp
   sp
 }
 
@@ -136,12 +76,17 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
 pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
                    new_stack: &Stack) -> usize {
   // Address of the topmost CFA stack slot.
-  let new_cfa = (new_stack.base() as *mut usize).offset(-1);
+  let new_cfa = (new_stack.base() as *mut usize).offset(-4);
 
   #[naked]
   unsafe extern "C" fn trampoline() {
     asm!(
       r#"
+        # Remember the frame and instruction pointers in the callee, to link
+        # the stacks together later.
+        movq    %rbp, %r8
+        movq    (%rsp), %r9
+
         # Save frame pointer explicitly; the unwinder uses it to find CFA of
         # the caller, and so it has to have the correct value immediately after
         # the call instruction that invoked the trampoline.
@@ -152,12 +97,18 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
         # Load stack pointer of the new context.
         movq    %rdx, %rsp
 
-        # Restore frame pointer of the new context.
+        # Load frame and instruction pointers of the new context.
         popq    %rbp
-
-        # Return into the new context. Use `pop` and `jmp` instead of a `ret`
-        # to avoid return address mispredictions (~8ns per `ret` on Ivy Bridge).
         popq    %rbx
+
+        # Put the frame and instruction pointers into the trampoline stack frame,
+        # making it appear to return right after the call instruction that invoked
+        # this trampoline. This is done after the loads above, since on the very first
+        # swap, the saved %rbp/%rbx intentionally alias 0(%rcx)/8(%rcx).
+        movq    %r8, 0(%rcx)
+        movq    %r9, 8(%rcx)
+
+        # Return into new context.
         jmpq    *%rbx
       "#
       : : : : "volatile")
@@ -166,8 +117,6 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
   let ret: usize;
   asm!(
     r#"
-      # Link the call stacks together.
-      movq    %rsp, (%rcx)
       # Push instruction pointer of the old context and switch to
       # the new context.
       call    ${1:c}
