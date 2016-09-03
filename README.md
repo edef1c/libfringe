@@ -117,7 +117,8 @@ there should be at least 8 KiB of free stack space, or panicking will result in 
 
 The architectures currently supported are: x86, x86_64, or1k.
 
-The platforms currently supported are: Linux (any libc), FreeBSD, DragonFly BSD, macOS.
+The platforms currently supported are: bare metal, Linux (any libc),
+FreeBSD, DragonFly BSD, macOS.
 Windows is not supported (see [explanation](#windows-compatibility) below).
 
 ## Installation
