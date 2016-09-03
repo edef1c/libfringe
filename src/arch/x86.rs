@@ -23,6 +23,7 @@ pub const STACK_ALIGNMENT: usize = 16;
 pub struct StackPointer(*mut usize);
 
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
+  #[cfg(not(target_vendor = "apple"))]
   #[naked]
   unsafe extern "C" fn trampoline() {
     asm!(
@@ -52,6 +53,27 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
 
       .Lend:
       .size __morestack, .Lend-__morestack
+      "#
+      : : : : "volatile")
+  }
+
+  #[cfg(target_vendor = "apple")]
+  #[naked]
+  unsafe extern "C" fn trampoline() {
+    asm!(
+      r#"
+      # Identical to the above, except avoids .local/.size that aren't available on Mach-O.
+      __morestack:
+      .private_extern __morestack
+
+        subl   $$8, %esp
+        .cfi_def_cfa_offset 8
+        .cfi_offset %ebp, -8
+        movl   %esp, %ebp
+        .cfi_def_cfa_register %ebp
+        # Call f.
+        pushl  %eax
+        calll  *12(%esp)
       "#
       : : : : "volatile")
   }
