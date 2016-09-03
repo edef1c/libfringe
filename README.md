@@ -21,7 +21,7 @@ It provides the following safe abstractions:
 
 It also provides the necessary low-level building blocks:
   * a trait that can be implemented by stack allocators,
-    [Stack](https://nathan7.github.io/libfringe/fringe/struct.Stack.html);
+    [Stack](https://nathan7.github.io/libfringe/fringe/trait.Stack.html);
   * a wrapper for using slice references as stacks,
     [SliceStack](https://nathan7.github.io/libfringe/fringe/struct.SliceStack.html);
   * a stack allocator based on `Box<[u8]>`,
