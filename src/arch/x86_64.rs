@@ -47,7 +47,7 @@ use stack::Stack;
 
 pub const STACK_ALIGNMENT: usize = 16;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct StackPointer(*mut usize);
 
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
@@ -133,7 +133,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
 }
 
 #[inline(always)]
-pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: *const StackPointer,
+pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
                    new_stack: &Stack) -> usize {
   // Address of the topmost CFA stack slot.
   let new_cfa = (new_stack.base() as *mut usize).offset(-1);
@@ -147,12 +147,10 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: *const StackPo
         # the call instruction that invoked the trampoline.
         pushq   %rbp
 
-        # Remember stack pointer of the old context, in case %rdx==%rsi.
-        movq    %rsp, %rbx
-        # Load stack pointer of the new context.
-        movq    (%rdx), %rsp
         # Save stack pointer of the old context.
-        movq    %rbx, (%rsi)
+        movq    %rsp, (%rsi)
+        # Load stack pointer of the new context.
+        movq    %rdx, %rsp
 
         # Restore frame pointer of the new context.
         popq    %rbp
@@ -178,7 +176,7 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: *const StackPo
     : "s" (trampoline as usize)
       "{rdi}" (arg)
       "{rsi}" (old_sp)
-      "{rdx}" (new_sp)
+      "{rdx}" (new_sp.0)
       "{rcx}" (new_cfa)
     : "rax",   "rbx",   "rcx",   "rdx",   "rsi", /*"rdi",   "rbp",   "rsp",*/
       "r8",    "r9",    "r10",   "r11",   "r12",   "r13",   "r14",   "r15",
