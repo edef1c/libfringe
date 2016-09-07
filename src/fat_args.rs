@@ -150,6 +150,7 @@ mod test {
     unsafe {
       let rets = init0(&stack);
       init1::<_, ()>(rets, None, move |initializer_sp| {
+        debug!("made it!");
         swap::<(), !>((), initializer_sp, None).1
       })
     };
