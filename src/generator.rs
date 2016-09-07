@@ -16,7 +16,8 @@ use core::{ptr, mem};
 use core::cell::Cell;
 
 use stack;
-use context::Context;
+use debug;
+use arch::{self, StackPointer};
 
 #[derive(Debug, Clone, Copy)]
 pub enum State {
@@ -80,9 +81,11 @@ pub enum State {
 /// ```
 #[derive(Debug)]
 pub struct Generator<Input: Send, Output: Send, Stack: stack::Stack> {
-  state:   State,
-  context: Context<Stack>,
-  phantom: (PhantomData<*const Input>, PhantomData<*const Output>)
+  state:     State,
+  stack:     Stack,
+  stack_id:  debug::StackId,
+  stack_ptr: arch::StackPointer,
+  phantom:   (PhantomData<*const Input>, PhantomData<*const Output>)
 }
 
 impl<Input, Output, Stack> Generator<Input, Output, Stack>
@@ -92,7 +95,7 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
   /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
   pub fn new<F>(stack: Stack, f: F) -> Generator<Input, Output, Stack>
       where Stack: stack::GuardedStack,
-            F: FnOnce(&mut Yielder<Input, Output, Stack>, Input) + Send {
+            F: FnOnce(&mut Yielder<Input, Output>, Input) + Send {
     unsafe { Generator::unsafe_new(stack, f) }
   }
 
@@ -104,35 +107,36 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
   ///
   /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
   pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<Input, Output, Stack>
-      where F: FnOnce(&mut Yielder<Input, Output, Stack>, Input) + Send {
-    unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize) -> !
+      where F: FnOnce(&mut Yielder<Input, Output>, Input) + Send {
+    unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer) -> !
         where Input: Send, Output: Send, Stack: stack::Stack,
-              F: FnOnce(&mut Yielder<Input, Output, Stack>, Input) {
+              F: FnOnce(&mut Yielder<Input, Output>, Input) {
       // Retrieve our environment from the callee and return control to it.
-      let (mut yielder, f) = ptr::read(env as *mut (Yielder<Input, Output, Stack>, F));
-      let data = Context::swap(yielder.context.get(), yielder.context.get(), 0);
+      let f = ptr::read(env as *const F);
+      let (data, stack_ptr) = arch::swap(0, stack_ptr, None);
       // See the second half of Yielder::suspend_bare.
-      let (new_context, input) = ptr::read(data as *mut (*mut Context<Stack>, Input));
-      yielder.context.set(new_context as *mut Context<Stack>);
+      let input = ptr::read(data as *const Input);
       // Run the body of the generator.
+      let mut yielder = Yielder::new(stack_ptr);
       f(&mut yielder, input);
       // Past this point, the generator has dropped everything it has held.
       loop { yielder.suspend_bare(None); }
     }
 
-    let mut generator = Generator {
-      state:   State::Runnable,
-      context: Context::new(stack, generator_wrapper::<Input, Output, Stack, F>),
-      phantom: (PhantomData, PhantomData)
-    };
+    let stack_id  = debug::StackId::register(&stack);
+    let stack_ptr = arch::init(&stack, generator_wrapper::<Input, Output, Stack, F>);
 
     // Transfer environment to the callee.
-    let mut env = (Yielder::new(&mut generator.context), f);
-    Context::swap(&mut generator.context, &generator.context,
-                  &mut env as *mut (Yielder<Input, Output, Stack>, F) as usize);
-    mem::forget(env);
+    let stack_ptr = arch::swap(&f as *const F as usize, stack_ptr, Some(&stack)).1;
+    mem::forget(f);
 
-    generator
+    Generator {
+      state:     State::Runnable,
+      stack:     stack,
+      stack_id:  stack_id,
+      stack_ptr: stack_ptr,
+      phantom:   (PhantomData, PhantomData)
+    }
   }
 
   /// Resumes the generator and return the next value it yields.
@@ -148,13 +152,10 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
 
         // Switch to the generator function, and retrieve the yielded value.
         let val = unsafe {
-          let mut data_in = (&mut self.context as *mut Context<Stack>, input);
-          let data_out =
-            ptr::read(Context::swap(&mut self.context, &self.context,
-                                    &mut data_in as *mut (*mut Context<Stack>, Input)  as usize)
-                      as *mut Option<Output>);
-          mem::forget(data_in);
-          data_out
+          let (data_out, stack_ptr) = arch::swap(&input as *const Input as usize, self.stack_ptr, Some(&self.stack));
+          self.stack_ptr = stack_ptr;
+          mem::forget(input);
+          ptr::read(data_out as *const Option<Output>)
         };
 
         // Unless the generator function has returned, it can be switched to again, so
@@ -177,7 +178,7 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
   pub fn unwrap(self) -> Stack {
     match self.state {
       State::Runnable    => panic!("Argh! Bastard! Don't touch that!"),
-      State::Unavailable => unsafe { self.context.unwrap() }
+      State::Unavailable => self.stack
     }
   }
 }
@@ -185,35 +186,27 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
 /// Yielder is an interface provided to every generator through which it
 /// returns a value.
 #[derive(Debug)]
-pub struct Yielder<Input: Send, Output: Send, Stack: stack::Stack> {
-  context: Cell<*mut Context<Stack>>,
+pub struct Yielder<Input: Send, Output: Send> {
+  stack_ptr: Cell<StackPointer>,
   phantom: (PhantomData<*const Input>, PhantomData<*const Output>)
 }
 
-impl<Input, Output, Stack> Yielder<Input, Output, Stack>
-    where Input: Send, Output: Send, Stack: stack::Stack {
-  fn new(context: *mut Context<Stack>) -> Yielder<Input, Output, Stack> {
+impl<Input, Output> Yielder<Input, Output>
+    where Input: Send, Output: Send {
+  fn new(stack_ptr: StackPointer) -> Yielder<Input, Output> {
     Yielder {
-      context: Cell::new(context),
+      stack_ptr: Cell::new(stack_ptr),
       phantom: (PhantomData, PhantomData)
     }
   }
 
   #[inline(always)]
-  fn suspend_bare(&self, mut val: Option<Output>) -> Input {
+  fn suspend_bare(&self, val: Option<Output>) -> Input {
     unsafe {
-      let data = Context::swap(self.context.get(), self.context.get(),
-                               &mut val as *mut Option<Output> as usize);
+      let (data, stack_ptr) = arch::swap(&val as *const Option<Output> as usize, self.stack_ptr.get(), None);
+      self.stack_ptr.set(stack_ptr);
       mem::forget(val);
-      let (new_context, input) = ptr::read(data as *mut (*mut Context<Stack>, Input));
-      // The generator can be moved (and with it, the context).
-      // This changes the address of the context.
-      // Thus, we update it after each swap.
-      self.context.set(new_context);
-      // However, between this point and the next time we enter suspend_bare
-      // the generator cannot be moved, as a &mut Generator is necessary
-      // to resume the generator function.
-      input
+      ptr::read(data as *const Input)
     }
   }
 

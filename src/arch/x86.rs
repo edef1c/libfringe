@@ -41,6 +41,7 @@
 // * The 1st init trampoline tells the unwinder to restore %ebp and its return
 //   address from the stack frame at %ebp (in the parent stack), thus continuing
 //   unwinding at the swap call site instead of falling off the end of context stack.
+use core::mem;
 use stack::Stack;
 
 pub const STACK_ALIGNMENT: usize = 16;
@@ -48,7 +49,7 @@ pub const STACK_ALIGNMENT: usize = 16;
 #[derive(Debug, Clone, Copy)]
 pub struct StackPointer(*mut usize);
 
-pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
+pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
   #[cfg(not(target_vendor = "apple"))]
   #[naked]
   unsafe extern "C" fn trampoline_1() {
@@ -69,8 +70,8 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
         # will use %ebp+8 as the next call frame address, restore return address
         # from CFA-4 and restore %ebp from CFA-8. This mirrors what the second half
         # of `swap_trampoline` does.
-        .cfi_def_cfa ebp, 8
-        .cfi_offset ebp, -8
+        .cfi_def_cfa %ebp, 8
+        .cfi_offset %ebp, -8
 
         # This nop is here so that the initial swap doesn't return to the start
         # of the trampoline, which confuses the unwinder since it will look for
@@ -97,8 +98,8 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
       # Identical to the above, except avoids .local/.size that aren't available on Mach-O.
       __morestack:
       .private_extern __morestack
-        .cfi_def_cfa ebp, 8
-        .cfi_offset ebp, -8
+        .cfi_def_cfa %ebp, 8
+        .cfi_offset %ebp, -8
         nop
         nop
       "#
@@ -114,13 +115,20 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
         # will restore %ebp (and thus CFA of the first trampoline) from the stack slot.
         # This stack slot is updated every time swap() is called to point to the bottom
         # of the stack of the context switch just switched from.
-        .cfi_def_cfa ebp, 8
-        .cfi_offset ebp, -8
+        .cfi_def_cfa %ebp, 8
+        .cfi_offset %ebp, -8
 
-        # Push argument.
-        pushl   %eax
+        # This nop is here so that the return address of the swap trampoline
+        # doesn't point to the start of the symbol. This confuses gdb's backtraces,
+        # causing them to think the parent function is trampoline_1 instead of
+        # trampoline_2.
+        nop
+
+        # Push arguments.
+        pushl   %esi
+        pushl   %edi
         # Call the provided function.
-        call    *12(%esp)
+        calll  *16(%esp)
       "#
       : : : : "volatile")
   }
@@ -140,27 +148,36 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
   // such as perf or dtrace.
   let mut sp = StackPointer(stack.base() as *mut usize);
 
+  push(&mut sp, 0 as usize); // Padding to ensure the stack is properly aligned
+  push(&mut sp, 0 as usize); // Padding to ensure the stack is properly aligned
+  push(&mut sp, 0 as usize); // Padding to ensure the stack is properly aligned
   push(&mut sp, f as usize); // Function that trampoline_2 should call
 
   // Call frame for trampoline_2. The CFA slot is updated by swap::trampoline
   // each time a context switch is performed.
   push(&mut sp, trampoline_1 as usize + 2); // Return after the 2 nops
-  push(&mut sp, 0xdead0cfa); // CFA slot
+  push(&mut sp, 0xdead0cfa);                // CFA slot
 
   // Call frame for swap::trampoline. We set up the %ebp value to point to the
   // parent call frame.
   let frame = sp;
-  push(&mut sp, trampoline_2 as usize); // Entry point
-  push(&mut sp, frame.0 as usize); // Pointer to parent call frame
+  push(&mut sp, trampoline_2 as usize + 1); // Entry point, skip initial nop
+  push(&mut sp, frame.0 as usize);          // Pointer to parent call frame
 
   sp
 }
 
 #[inline(always)]
-pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
-                   new_stack: &Stack) -> usize {
+pub unsafe fn swap(arg: usize, new_sp: StackPointer,
+                   new_stack: Option<&Stack>) -> (usize, StackPointer) {
   // Address of the topmost CFA stack slot.
-  let new_cfa = (new_stack.base() as *mut usize).offset(-3);
+  let mut dummy: usize = mem::uninitialized();
+  let new_cfa = if let Some(new_stack) = new_stack {
+    (new_stack.base() as *mut usize).offset(-6)
+  } else {
+    // Just pass a dummy pointer if we aren't linking the stack
+    &mut dummy
+  };
 
   #[naked]
   unsafe extern "C" fn trampoline() {
@@ -171,54 +188,50 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
         # the call instruction that invoked the trampoline.
         pushl   %ebp
         .cfi_adjust_cfa_offset 4
-        .cfi_rel_offset ebp, 0
+        .cfi_rel_offset %ebp, 0
 
         # Link the call stacks together by writing the current stack bottom
         # address to the CFA slot in the new stack.
-        movl    %esp, (%edi)
+        movl    %esp, (%ecx)
 
-        # Switch to the new stack for unwinding purposes. The old stack may no
-        # longer be valid now that we have modified the link.
-        .cfi_def_cfa_register edx
-
-        # Save stack pointer of the old context.
-        movl    %esp, (%esi)
+        # Pass the stack pointer of the old context to the new one.
+        movl    %esp, %esi
         # Load stack pointer of the new context.
         movl    %edx, %esp
-        .cfi_def_cfa_register esp
 
         # Restore frame pointer of the new context.
         popl    %ebp
         .cfi_adjust_cfa_offset -4
-        .cfi_restore ebp
+        .cfi_restore %ebp
 
         # Return into the new context. Use `pop` and `jmp` instead of a `ret`
         # to avoid return address mispredictions (~8ns per `ret` on Ivy Bridge).
-        popl    %ecx
+        popl    %eax
         .cfi_adjust_cfa_offset -4
-        .cfi_register eip, ecx
-        jmpl    *%ecx
+        .cfi_register %eip, %eax
+        jmpl    *%eax
       "#
       : : : : "volatile")
   }
 
   let ret: usize;
+  let ret_sp: *mut usize;
   asm!(
     r#"
       # Push instruction pointer of the old context and switch to
       # the new context.
-      call    ${1:c}
+      call    ${2:c}
     "#
-    : "={eax}" (ret)
+    : "={edi}" (ret)
+      "={esi}" (ret_sp)
     : "s" (trampoline as usize)
-      "{eax}" (arg)
-      "{esi}" (old_sp)
+      "{edi}" (arg)
       "{edx}" (new_sp.0)
-      "{edi}" (new_cfa)
-    :/*"eax",*/"ebx", "ecx",  "edx",  "esi",  "edi",/*"ebp",  "esp",*/
+      "{ecx}" (new_cfa)
+    : "eax", "ebx", "ecx",  "edx", /*"esi",  "edi", "ebp",  "esp",*/
       "mm0",  "mm1",  "mm2",  "mm3",  "mm4",  "mm5",  "mm6",  "mm7",
       "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7",
       "cc", "dirflag", "fpsr", "flags", "memory"
     : "volatile");
-  ret
+  (ret, StackPointer(ret_sp))
 }
