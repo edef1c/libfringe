@@ -7,10 +7,10 @@
 // copied, modified, or distributed except according to those terms.
 extern crate fringe;
 
-use fringe::{Stack, SliceStack, OwnedStack, OsStack};
+use fringe::{SliceStack, OwnedStack, OsStack};
 use fringe::generator::{Generator, Yielder};
 
-fn add_one_fn<S: Stack>(yielder: &mut Yielder<i32, i32, S>, mut input: i32) {
+fn add_one_fn(yielder: &mut Yielder<i32, i32>, mut input: i32) {
   loop {
     if input == 0 { break }
     input = yielder.suspend(input + 1)

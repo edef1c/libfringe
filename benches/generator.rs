@@ -17,5 +17,5 @@ fn generate(b: &mut test::Bencher) {
     loop { input = yielder.suspend(input) }
   });
 
-  b.iter(|| test::black_box(identity.resume(test::black_box(0))));
+  b.iter(|| for _ in 0..10 { test::black_box(identity.resume(test::black_box(0))); });
 }

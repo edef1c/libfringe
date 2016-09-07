@@ -14,7 +14,8 @@
 // * OR1K C ABI passes the first argument in r3. We also use r3 to pass a value
 //   while swapping context; this is an arbitrary choice
 //   (we clobber all registers and could use any of them) but this allows us
-//   to reuse the swap function to perform the initial call.
+//   to reuse the swap function to perform the initial call. We do the same
+//   thing with r4 to pass the stack pointer to the new context.
 //
 // To understand the DWARF CFI code in this file, keep in mind these facts:
 // * CFI is "call frame information"; a set of instructions to a debugger or
@@ -47,7 +48,7 @@ pub const STACK_ALIGNMENT: usize = 4;
 #[derive(Debug, Clone, Copy)]
 pub struct StackPointer(*mut usize);
 
-pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackPointer {
+pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
   #[naked]
   unsafe extern "C" fn trampoline_1() {
     asm!(
@@ -96,6 +97,12 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
         .cfi_offset r2, -4
         .cfi_offset r9, -8
 
+        # This nop is here so that the return address of the swap trampoline
+        # doesn't point to the start of the symbol. This confuses gdb's backtraces,
+        # causing them to think the parent function is trampoline_1 instead of
+        # trampoline_2.
+        nop
+
         # Call the provided function.
         l.lwz   r4, 8(r1)
         l.jalr  r4
@@ -123,25 +130,31 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize) -> !) -> StackP
 
   // Call frame for trampoline_2. The CFA slot is updated by swap::trampoline
   // each time a context switch is performed.
-  push(&mut sp, 0xdead0cfa); // CFA slot
+  push(&mut sp, 0xdead0cfa);                // CFA slot
   push(&mut sp, trampoline_1 as usize + 4); // Return after the nop
 
   // Call frame for swap::trampoline. We set up the r2 value to point to the
   // parent call frame.
   let frame = sp;
-  push(&mut sp, frame.0 as usize); // Pointer to parent call frame
-  push(&mut sp, trampoline_2 as usize); // Entry point
+  push(&mut sp, frame.0 as usize);          // Pointer to parent call frame
+  push(&mut sp, trampoline_2 as usize + 4); // Entry point, skip initial nop
 
-  // The call frame for swap::trampoline is actually in the red zone and not
-  // below the stack pointer.
+  // The last two values are read by the swap trampoline and are actually in the
+  // red zone and not below the stack pointer.
   frame
 }
 
 #[inline(always)]
-pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
-                   new_stack: &Stack) -> usize {
+pub unsafe fn swap(arg: usize, new_sp: StackPointer,
+                   new_stack: Option<&Stack>) -> (usize, StackPointer) {
   // Address of the topmost CFA stack slot.
-  let new_cfa = (new_stack.base() as *mut usize).offset(-2);
+  let mut dummy: usize = mem::uninitialized();
+  let new_cfa = if let Some(new_stack) = new_stack {
+    (new_stack.base() as *mut usize).offset(-2)
+  } else {
+    // Just pass a dummy pointer if we aren't linking the stack
+    &mut dummy
+  };
 
   #[naked]
   unsafe extern "C" fn trampoline() {
@@ -160,17 +173,13 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
         l.addi  r7, r1, -8
         l.sw    0(r6), r7
 
-        # Switch to the new stack for unwinding purposes. The old stack may no
-        # longer be valid now that we have modified the link.
-        .cfi_def_cfa_register r5
-
-        # Save stack pointer of the old context.
-        l.sw    0(r4), r1
+        # Pass the stack pointer of the old context to the new one.
+        l.or    r4, r0, r1
         # Load stack pointer of the new context.
         l.or    r1, r0, r5
-        .cfi_def_cfa_register r1
 
         # Restore frame pointer and link register of the new context.
+        # Load frame and instruction pointers of the new context.
         l.lwz   r2, -4(r1)
         l.lwz   r9, -8(r1)
 
@@ -182,23 +191,24 @@ pub unsafe fn swap(arg: usize, old_sp: *mut StackPointer, new_sp: StackPointer,
   }
 
   let ret: usize;
+  let ret_sp: *mut usize;
   asm!(
     r#"
       # Call the trampoline to switch to the new context.
-      l.jal   ${1}
+      l.jal   ${2}
       l.nop
     "#
     : "={r3}" (ret)
+      "={r4}" (ret_sp)
     : "s" (trampoline as usize)
       "{r3}" (arg)
-      "{r4}" (old_sp)
       "{r5}" (new_sp.0)
       "{r6}" (new_cfa)
-    :/*"r0", "r1",  "r2",  "r3",*/"r4",  "r5",  "r6",  "r7",
+    :/*"r0", "r1",  "r2",  "r3",  "r4",*/"r5",  "r6",  "r7",
       "r8",  "r9",  "r10", "r11", "r12", "r13", "r14", "r15",
       "r16", "r17", "r18", "r19", "r20", "r21", "r22", "r23",
       "r24", "r25", "r26", "r27", "r28", "r29", "r30", "r31",
       "cc", "memory"
     : "volatile");
-  ret
+  (ret, StackPointer(ret_sp))
 }
