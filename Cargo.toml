@@ -15,7 +15,12 @@ libc = "0.2.14"
 optional = true
 version = "1.0.0"
 
+[dependencies.log]
+version = "0.3"
+default-features = false
+
 [dev-dependencies]
+env_logger = "0.3.1"
 simd = "0.1"
 rand = "0.3"
 
