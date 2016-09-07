@@ -13,6 +13,7 @@
 
 use core::marker::PhantomData;
 use core::{ptr, mem};
+use core::cell::Cell;
 
 use stack;
 use context::Context;
@@ -109,10 +110,10 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
               F: FnOnce(&mut Yielder<Input, Output, Stack>, Input) {
       // Retrieve our environment from the callee and return control to it.
       let (mut yielder, f) = ptr::read(env as *mut (Yielder<Input, Output, Stack>, F));
-      let data = Context::swap(yielder.context, yielder.context, 0);
+      let data = Context::swap(yielder.context.get(), yielder.context.get(), 0);
       // See the second half of Yielder::suspend_bare.
       let (new_context, input) = ptr::read(data as *mut (*mut Context<Stack>, Input));
-      yielder.context = new_context as *mut Context<Stack>;
+      yielder.context.set(new_context as *mut Context<Stack>);
       // Run the body of the generator.
       f(&mut yielder, input);
       // Past this point, the generator has dropped everything it has held.
@@ -185,7 +186,7 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
 /// returns a value.
 #[derive(Debug)]
 pub struct Yielder<Input: Send, Output: Send, Stack: stack::Stack> {
-  context: *mut Context<Stack>,
+  context: Cell<*mut Context<Stack>>,
   phantom: (PhantomData<*const Input>, PhantomData<*const Output>)
 }
 
@@ -193,22 +194,22 @@ impl<Input, Output, Stack> Yielder<Input, Output, Stack>
     where Input: Send, Output: Send, Stack: stack::Stack {
   fn new(context: *mut Context<Stack>) -> Yielder<Input, Output, Stack> {
     Yielder {
-      context: context,
+      context: Cell::new(context),
       phantom: (PhantomData, PhantomData)
     }
   }
 
   #[inline(always)]
-  fn suspend_bare(&mut self, mut val: Option<Output>) -> Input {
+  fn suspend_bare(&self, mut val: Option<Output>) -> Input {
     unsafe {
-      let data = Context::swap(self.context, self.context,
+      let data = Context::swap(self.context.get(), self.context.get(),
                                &mut val as *mut Option<Output> as usize);
       mem::forget(val);
       let (new_context, input) = ptr::read(data as *mut (*mut Context<Stack>, Input));
       // The generator can be moved (and with it, the context).
       // This changes the address of the context.
       // Thus, we update it after each swap.
-      self.context = new_context;
+      self.context.set(new_context);
       // However, between this point and the next time we enter suspend_bare
       // the generator cannot be moved, as a &mut Generator is necessary
       // to resume the generator function.
@@ -219,7 +220,7 @@ impl<Input, Output, Stack> Yielder<Input, Output, Stack>
   /// Suspends the generator and returns `Some(item)` from the `resume()`
   /// invocation that resumed the generator.
   #[inline(always)]
-  pub fn suspend(&mut self, item: Output) -> Input {
+  pub fn suspend(&self, item: Output) -> Input {
     self.suspend_bare(Some(item))
   }
 }
