@@ -6,7 +6,7 @@
 // copied, modified, or distributed except according to those terms.
 #![feature(asm, naked_functions, cfg_target_vendor)]
 #![cfg_attr(feature = "alloc", feature(alloc, heap_api))]
-#![cfg_attr(test, feature(test, thread_local, const_fn))]
+#![cfg_attr(test, feature(test))]
 #![no_std]
 
 //! libfringe is a library implementing safe, lightweight context switches,
@@ -51,7 +51,6 @@ pub const STACK_ALIGNMENT: usize = arch::STACK_ALIGNMENT;
 
 mod debug;
 
-mod context;
 mod stack;
 mod slice_stack;
 pub mod generator;
