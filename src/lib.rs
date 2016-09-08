@@ -5,6 +5,7 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 #![feature(asm, naked_functions, cfg_target_vendor)]
+#![feature(never_type, slice_patterns)]
 #![cfg_attr(feature = "alloc", feature(alloc, heap_api))]
 #![cfg_attr(test, feature(test))]
 #![no_std]
@@ -52,6 +53,7 @@ pub const STACK_ALIGNMENT: usize = arch::STACK_ALIGNMENT;
 mod debug;
 mod stack_pointer;
 
+mod fat_args;
 mod stack;
 mod slice_stack;
 pub mod generator;
