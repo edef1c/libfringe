@@ -28,7 +28,9 @@ fn have_cross_stack_unwind() -> bool {
   //   for now.
   // - iOS on ARM uses setjmp/longjmp instead of DWARF-2 unwinding, which needs
   //   to be explicitly saved/restored when switching contexts.
-  !(cfg!(windows) || cfg!(all(target_os = "ios", target_arch = "arm")))
+  // - LLVM doesn't currently support ARM EHABI directives in inline assembly so
+  //   we instead need to propagate exceptions manually across contexts.
+  !(cfg!(windows) || cfg!(target_arch = "arm"))
 }
 
 // Wrapper around the root function of a generator which handles unwinding.
