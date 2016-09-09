@@ -13,6 +13,7 @@ use core::nonzero::NonZero;
 #[cfg_attr(target_arch = "x86",     path = "x86.rs")]
 #[cfg_attr(target_arch = "x86_64",  path = "x86_64.rs")]
 #[cfg_attr(target_arch = "aarch64", path = "aarch64.rs")]
+#[cfg_attr(target_arch = "arm",     path = "arm.rs")]
 #[cfg_attr(target_arch = "or1k",    path = "or1k.rs")]
 mod imp;
 
@@ -40,6 +41,7 @@ impl StackPointer {
 #[cfg(test)]
 mod tests {
   extern crate test;
+  #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
   extern crate simd;
 
   use arch::{self, StackPointer};
@@ -66,6 +68,7 @@ mod tests {
     }
   }
 
+  #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
   #[test]
   fn context_simd() {
     unsafe fn permuter(arg: usize, stack_ptr: StackPointer) {
