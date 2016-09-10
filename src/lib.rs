@@ -5,8 +5,17 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 #![feature(asm, naked_functions, cfg_target_vendor)]
+#![feature(never_type, slice_patterns)]
 #![cfg_attr(feature = "alloc", feature(alloc, heap_api))]
-#![cfg_attr(test, feature(test))]
+#![cfg_attr(test, feature(test, thread_local, const_fn))]
+
+#![feature(never_type)]
+#![feature(slice_patterns)]
+#![feature(unique)]
+#![feature(pub_restricted)]
+#![feature(specialization)]
+#![feature(const_fn)]
+
 #![no_std]
 
 //! libfringe is a library implementing safe, lightweight context switches,
@@ -33,6 +42,9 @@
 #[macro_use]
 extern crate std;
 
+#[macro_use]
+extern crate log;
+
 pub use stack::Stack;
 pub use stack::GuardedStack;
 pub use slice_stack::SliceStack;
@@ -50,10 +62,13 @@ mod arch;
 pub const STACK_ALIGNMENT: usize = arch::STACK_ALIGNMENT;
 
 mod debug;
+mod stack_pointer;
 
+mod fat_args;
 mod stack;
 mod slice_stack;
 pub mod generator;
+pub mod session;
 
 #[cfg(feature = "alloc")]
 mod owned_stack;
