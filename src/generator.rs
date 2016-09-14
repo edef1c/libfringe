@@ -80,22 +80,22 @@ pub enum State {
 /// println!("{:?}", nat.next()); // prints Some(2)
 /// ```
 #[derive(Debug)]
-pub struct Generator<Input: Send, Output: Send, Stack: stack::Stack> {
+pub struct Generator<'a, Input: Send, Output: Send, Stack: stack::Stack> {
   state:     State,
   stack:     Stack,
   stack_id:  debug::StackId,
   stack_ptr: arch::StackPointer,
-  phantom:   PhantomData<(*mut Input, *const Output)>
+  phantom:   PhantomData<(&'a (), *mut Input, *const Output)>
 }
 
-impl<Input, Output, Stack> Generator<Input, Output, Stack>
+impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
     where Input: Send, Output: Send, Stack: stack::Stack {
   /// Creates a new generator.
   ///
   /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
-  pub fn new<F>(stack: Stack, f: F) -> Generator<Input, Output, Stack>
+  pub fn new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
       where Stack: stack::GuardedStack,
-            F: FnOnce(&mut Yielder<Input, Output>, Input) + Send {
+            F: FnOnce(&mut Yielder<Input, Output>, Input) + Send + 'a {
     unsafe { Generator::unsafe_new(stack, f) }
   }
 
@@ -106,8 +106,8 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
   /// guarded stacks do not exist, e.g. in absence of an MMU.
   ///
   /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
-  pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<Input, Output, Stack>
-      where F: FnOnce(&mut Yielder<Input, Output>, Input) + Send {
+  pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
+      where F: FnOnce(&mut Yielder<Input, Output>, Input) + Send + 'a {
     unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer) -> !
         where Input: Send, Output: Send, Stack: stack::Stack,
               F: FnOnce(&mut Yielder<Input, Output>, Input) {
@@ -218,7 +218,7 @@ impl<Input, Output> Yielder<Input, Output>
   }
 }
 
-impl<Output, Stack> Iterator for Generator<(), Output, Stack>
+impl<'a, Output, Stack> Iterator for Generator<'a, (), Output, Stack>
     where Output: Send, Stack: stack::Stack {
   type Item = Output;
 
