@@ -29,8 +29,8 @@ impl OsStack {
   pub fn new(size: usize) -> Result<OsStack, IoError> {
     let page_size = sys::page_size();
 
-    // Stacks have to be at least one page long.
-    let len = if size == 0 { page_size } else { size };
+    // Stacks have to be at least 16KB to support unwinding.
+    let len = if size == 0 { 16384 } else { size };
 
     // Round the length one page size up, using the fact that the page size
     // is a power of two.

@@ -47,7 +47,7 @@ mod tests {
 
   #[test]
   fn context() {
-    unsafe extern "C" fn adder(arg: usize, stack_ptr: StackPointer) {
+    unsafe fn adder(arg: usize, stack_ptr: StackPointer) {
       println!("it's alive! arg: {}", arg);
       let (arg, stack_ptr) = arch::swap(arg + 1, stack_ptr);
       println!("still alive! arg: {}", arg);
@@ -68,7 +68,7 @@ mod tests {
 
   #[test]
   fn context_simd() {
-    unsafe extern "C" fn permuter(arg: usize, stack_ptr: StackPointer) {
+    unsafe fn permuter(arg: usize, stack_ptr: StackPointer) {
       // This will crash if the stack is not aligned properly.
       let x = simd::i32x4::splat(arg as i32);
       let y = x * x;
@@ -91,7 +91,7 @@ mod tests {
     }
   }
 
-  unsafe extern "C" fn do_panic(arg: usize, stack_ptr: StackPointer) {
+  unsafe fn do_panic(arg: usize, stack_ptr: StackPointer) {
     match arg {
       0 => panic!("arg=0"),
       1 => {
@@ -127,7 +127,7 @@ mod tests {
 
   #[test]
   fn ret() {
-    unsafe extern "C" fn ret2(_: usize, _: StackPointer) {}
+    unsafe fn ret2(_: usize, _: StackPointer) {}
 
     unsafe {
       let stack = OsStack::new(4 << 20).unwrap();
@@ -140,7 +140,7 @@ mod tests {
 
   #[bench]
   fn swap(b: &mut test::Bencher) {
-    unsafe extern "C" fn loopback(mut arg: usize, mut stack_ptr: StackPointer) {
+    unsafe fn loopback(mut arg: usize, mut stack_ptr: StackPointer) {
       // This deliberately does not ignore arg, to measure the time it takes
       // to move the return value between registers.
       loop {

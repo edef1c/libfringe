@@ -43,10 +43,11 @@
 //   unwinding at the swap call site instead of falling off the end of context stack.
 use core::mem;
 use arch::StackPointer;
+use unwind;
 
 pub const STACK_ALIGNMENT: usize = 4;
 
-pub unsafe fn init(stack_base: *mut u8, f: unsafe extern "C" fn(usize, StackPointer)) -> StackPointer {
+pub unsafe fn init(stack_base: *mut u8, f: unsafe fn(usize, StackPointer)) -> StackPointer {
   #[naked]
   unsafe extern "C" fn trampoline_1() {
     asm!(
@@ -101,14 +102,11 @@ pub unsafe fn init(stack_base: *mut u8, f: unsafe extern "C" fn(usize, StackPoin
         # trampoline_2.
         l.nop
 
-        # Call the provided function.
-        l.lwz   r5, 8(r1)
-        l.jalr  r5
+        # Call unwind_wrapper with the provided function and the stack base address.
+        l.addi  r5, r1, 12
+        l.lwz   r6, 8(r1)
+        l.jal   ${0}
         l.nop
-
-        # Clear the stack pointer. We can't call into this context any more once
-        # the function has returned.
-        l.or    r4, r0, r0
 
         # Restore the stack pointer of the parent context. No CFI adjustments
         # are needed since we have the same stack frame as trampoline_1.
@@ -118,11 +116,24 @@ pub unsafe fn init(stack_base: *mut u8, f: unsafe extern "C" fn(usize, StackPoin
         l.lwz   r2, -4(r1)
         l.lwz   r9, -8(r1)
 
+        # If the returned value is nonzero, trigger an unwind in the parent
+        # context with the given exception object.
+        l.or    r4, r0, r11
+        l.sfeq  r11, r0
+        l.bf    ${1}
+
+        # Clear the stack pointer. We can't call into this context any more once
+        # the function has returned.
+        l.or    r4, r0, r0
+
         # Return into the parent context.
         l.jr    r9
         l.nop
       "#
-      : : : : "volatile")
+      :
+      : "s" (unwind::unwind_wrapper as usize)
+        "s" (unwind::start_unwind as usize)
+      : : "volatile")
   }
 
   // We set up the stack in a somewhat special way so that to the unwinder it
@@ -252,4 +263,55 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
       "cc", "memory"
     : "volatile");
   (ret, mem::transmute(ret_sp))
+}
+
+#[inline(always)]
+pub unsafe fn unwind(new_sp: StackPointer, new_stack_base: *mut u8) {
+  // Argument to pass to start_unwind, based on the stack base address.
+  let arg = unwind::unwind_arg(new_stack_base);
+
+  // This is identical to swap_link, except that it performs a tail call to
+  // start_unwind instead of returning into the target context.
+  #[naked]
+  unsafe extern "C" fn trampoline() {
+    asm!(
+      r#"
+        l.sw    -4(r1), r2
+        l.sw    -8(r1), r9
+        .cfi_offset r2, -4
+        .cfi_offset r9, -8
+        l.addi  r7, r1, -8
+        l.sw    -8(r6), r7
+        l.or    r1, r0, r5
+        l.lwz   r2, -4(r1)
+        l.lwz   r9, -8(r1)
+
+        # Jump to the start_unwind function, which will force a stack unwind in
+        # the target context. This will eventually return to us through the
+        # stack link.
+        l.j     ${0}
+        l.nop
+      "#
+      :
+      : "s" (unwind::start_unwind as usize)
+      : : "volatile")
+  }
+
+  asm!(
+    r#"
+      # Call the trampoline to switch to the new context.
+      l.jal   ${0}
+      l.nop
+    "#
+    :
+    : "s" (trampoline as usize)
+      "{r3}" (arg)
+      "{r5}" (new_sp.0)
+      "{r6}" (new_stack_base)
+    :/*"r0", "r1",  "r2",*/"r3",  "r4",  "r5",  "r6",  "r7",
+      "r8",  "r9",  "r10", "r11", "r12", "r13", "r14", "r15",
+      "r16", "r17", "r18", "r19", "r20", "r21", "r22", "r23",
+      "r24", "r25", "r26", "r27", "r28", "r29", "r30", "r31",
+      "cc", "memory"
+    : "volatile");
 }

@@ -68,7 +68,7 @@ fn panic_safety() {
 
 #[test]
 fn with_slice_stack() {
-  let mut memory = [0; 1024];
+  let mut memory = [0; 16384];
   let stack = SliceStack::new(&mut memory);
   let mut add_one = unsafe { Generator::unsafe_new(stack, add_one_fn) };
   assert_eq!(add_one.resume(1), Some(2));
@@ -78,7 +78,7 @@ fn with_slice_stack() {
 
 #[test]
 fn with_owned_stack() {
-  let stack = OwnedStack::new(1024);
+  let stack = OwnedStack::new(16384);
   let mut add_one = unsafe { Generator::unsafe_new(stack, add_one_fn) };
   assert_eq!(add_one.resume(1), Some(2));
   assert_eq!(add_one.resume(2), Some(3));
