@@ -17,7 +17,7 @@ fn add_one_fn(yielder: &mut Yielder<i32, i32>, mut input: i32) {
   }
 }
 
-fn new_add_one() -> Generator<i32, i32, OsStack> {
+fn new_add_one() -> Generator<'static, i32, i32, OsStack> {
   let stack = OsStack::new(0).unwrap();
   Generator::new(stack, add_one_fn)
 }
@@ -48,7 +48,7 @@ fn move_after_new() {
 #[should_panic]
 fn panic_safety() {
   struct Wrapper {
-    gen: Generator<(), (), OsStack>
+    gen: Generator<'static, (), (), OsStack>
   }
 
   impl Drop for Wrapper {
