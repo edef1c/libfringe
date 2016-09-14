@@ -140,7 +140,7 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
   pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
       where F: FnOnce(&Yielder<Input, Output>, Input) + Send + 'a {
-    unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer)
+    unsafe fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer)
         where Stack: stack::Stack, F: FnOnce(&Yielder<Input, Output>, Input) {
       // Retrieve our environment from the callee and return control to it.
       let f: F = decode_usize(env);
@@ -200,11 +200,23 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// Extracts the stack from a generator when the generator function has returned.
   /// If the generator function has not returned
   /// (i.e. `self.state() == State::Runnable`), panics.
-  pub fn unwrap(self) -> Stack {
-    match self.state() {
-      State::Runnable    => panic!("Argh! Bastard! Don't touch that!"),
-      State::Unavailable => self.stack
+  pub fn unwrap(mut self) -> Stack {
+    unsafe {
+      self.stack_ptr.map(|stack_ptr| arch::unwind(stack_ptr, self.stack.base()));
+
+      // We can't just return self.stack since Generator has a Drop impl
+      let stack = ptr::read(&self.stack);
+      ptr::drop_in_place(&mut self.stack_id);
+      mem::forget(self);
+      stack
     }
+  }
+}
+
+impl<'a, Input, Output, Stack> Drop for Generator<'a, Input, Output, Stack>
+    where Input: 'a, Output: 'a, Stack: stack::Stack {
+  fn drop(&mut self) {
+    self.stack_ptr.map(|stack_ptr| unsafe { arch::unwind(stack_ptr, self.stack.base()) });
   }
 }
 
@@ -212,14 +224,14 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
 /// returns a value.
 #[derive(Debug)]
 pub struct Yielder<Input, Output> {
-  stack_ptr: Cell<StackPointer>,
+  stack_ptr: Cell<Option<StackPointer>>,
   phantom: PhantomData<(*const Input, *mut Output)>
 }
 
 impl<Input, Output> Yielder<Input, Output> {
   fn new(stack_ptr: StackPointer) -> Yielder<Input, Output> {
     Yielder {
-      stack_ptr: Cell::new(stack_ptr),
+      stack_ptr: Cell::new(Some(stack_ptr)),
       phantom: PhantomData
     }
   }
@@ -229,9 +241,24 @@ impl<Input, Output> Yielder<Input, Output> {
   #[inline(always)]
   pub fn suspend(&self, item: Output) -> Input {
     unsafe {
+      struct PanicGuard<'a>(&'a Cell<Option<StackPointer>>);
+      impl<'a> Drop for PanicGuard<'a> {
+        fn drop(&mut self) {
+          self.0.set(None);
+        }
+      }
+
+      let stack_ptr = self.stack_ptr.get().expect("attempted to yield while unwinding");
       let item2 = NoDrop { inner: item };
-      let (data, stack_ptr) = arch::swap(encode_usize(&item2), self.stack_ptr.get());
-      self.stack_ptr.set(stack_ptr);
+
+      // Use a PanicGuard to set self.stack_ptr to None if unwinding occurs. This
+      // is necessary to guarantee safety in case someone tries to call yield
+      // while we are unwinding since there is nowhere to yield to.
+      let guard = PanicGuard(&self.stack_ptr);
+      let (data, stack_ptr) = arch::swap(encode_usize(&item2), stack_ptr);
+      mem::forget(guard);
+
+      self.stack_ptr.set(Some(stack_ptr));
       decode_usize(data)
     }
   }

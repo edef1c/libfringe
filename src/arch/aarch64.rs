@@ -48,10 +48,11 @@
 //   unwinding at the swap call site instead of falling off the end of context stack.
 use core::mem;
 use arch::StackPointer;
+use unwind;
 
 pub const STACK_ALIGNMENT: usize = 16;
 
-pub unsafe fn init(stack_base: *mut u8, f: unsafe extern "C" fn(usize, StackPointer)) -> StackPointer {
+pub unsafe fn init(stack_base: *mut u8, f: unsafe fn(usize, StackPointer)) -> StackPointer {
   #[cfg(not(target_vendor = "apple"))]
   #[naked]
   unsafe extern "C" fn trampoline_1() {
@@ -123,13 +124,10 @@ pub unsafe fn init(stack_base: *mut u8, f: unsafe extern "C" fn(usize, StackPoin
         # trampoline_2.
         nop
 
-        # Call the provided function.
-        ldr     x2, [sp, #16]
-        blr     x2
-
-        # Clear the stack pointer. We can't call into this context any more once
-        # the function has returned.
-        mov     x1, #0
+        # Call unwind_wrapper with the provided function and the stack base address.
+        add     x2, sp, #32
+        ldr     x3, [sp, #16]
+        bl      ${0}
 
         # Restore the stack pointer of the parent context. No CFI adjustments
         # are needed since we have the same stack frame as trampoline_1.
@@ -142,11 +140,22 @@ pub unsafe fn init(stack_base: *mut u8, f: unsafe extern "C" fn(usize, StackPoin
         .cfi_restore x29
         .cfi_restore x30
 
+        # If the returned value is nonzero, trigger an unwind in the parent
+        # context with the given exception object.
+        cbnz    x0, ${1}
+
+        # Clear the stack pointer. We can't call into this context any more once
+        # the function has returned.
+        mov     x1, #0
+
         # Return into the parent context. Use `br` instead of a `ret` to avoid
         # return address mispredictions.
         br      x30
       "#
-      : : : : "volatile")
+      :
+      : "s" (unwind::unwind_wrapper as usize)
+        "s" (unwind::start_unwind as usize)
+      : : "volatile")
   }
 
   // We set up the stack in a somewhat special way so that to the unwinder it
@@ -263,4 +272,43 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
       "cc", "memory"
     : "volatile", "alignstack");
   (ret, mem::transmute(ret_sp))
+}
+
+#[inline(always)]
+pub unsafe fn unwind(new_sp: StackPointer, new_stack_base: *mut u8) {
+  // Argument to pass to start_unwind, based on the stack base address.
+  let arg = unwind::unwind_arg(new_stack_base);
+
+  // This is identical to swap_link, except that it performs a tail call to
+  // start_unwind instead of returning into the target context.
+  asm!(
+    r#"
+        adr     x30, 0f
+        stp     x29, x30, [sp, #-16]!
+        mov     x1, sp
+        str     x1, [x3, #-32]
+        mov     sp, x2
+        ldp     x29, x30, [sp], #16
+
+        # Jump to the start_unwind function, which will force a stack unwind in
+        # the target context. This will eventually return to us through the
+        # stack link.
+        b       ${0}
+      0:
+    "#
+    :
+    : "s" (unwind::start_unwind as usize)
+      "{x0}" (arg)
+      "{x2}" (new_sp.0)
+      "{x3}" (new_stack_base)
+    : "x0",  "x1",  "x2",  "x3",  "x4",  "x5",  "x6",  "x7",
+      "x8",  "x9",  "x10", "x11", "x12", "x13", "x14", "x15",
+      "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23",
+      "x24", "x25", "x26", "x27", "x28",/*fp,*/ "lr", /*sp,*/
+      "v0",  "v1",  "v2",  "v3",  "v4",  "v5",  "v6",  "v7",
+      "v8",  "v9",  "v10", "v11", "v12", "v13", "v14", "v15",
+      "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23",
+      "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31",
+      "cc", "memory"
+    : "volatile", "alignstack");
 }

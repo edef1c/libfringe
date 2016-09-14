@@ -43,6 +43,8 @@ pub const STACK_ALIGNMENT: usize = arch::STACK_ALIGNMENT;
 
 mod debug;
 
+mod unwind;
+
 pub mod generator;
 
 mod stack;

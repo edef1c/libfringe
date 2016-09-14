@@ -48,10 +48,11 @@
 //   unwinding at the swap call site instead of falling off the end of context stack.
 use core::mem;
 use arch::StackPointer;
+use unwind;
 
 pub const STACK_ALIGNMENT: usize = 16;
 
-pub unsafe fn init(stack_base: *mut u8, f: unsafe extern "C" fn(usize, StackPointer)) -> StackPointer {
+pub unsafe fn init(stack_base: *mut u8, f: unsafe fn(usize, StackPointer)) -> StackPointer {
   #[cfg(not(target_vendor = "apple"))]
   #[naked]
   unsafe extern "C" fn trampoline_1() {
@@ -126,12 +127,10 @@ pub unsafe fn init(stack_base: *mut u8, f: unsafe extern "C" fn(usize, StackPoin
         # trampoline_2.
         nop
 
-        # Call the provided function.
-        callq   *16(%rsp)
-
-        # Clear the stack pointer. We can't call into this context any more once
-        # the function has returned.
-        xorq    %rsi, %rsi
+        # Call unwind_wrapper with the provided function and the stack base address.
+        leaq    32(%rsp), %rdx
+        movq    16(%rsp), %rcx
+        call    ${0:c}
 
         # Restore the stack pointer of the parent context. No CFI adjustments
         # are needed since we have the same stack frame as trampoline_1.
@@ -142,6 +141,16 @@ pub unsafe fn init(stack_base: *mut u8, f: unsafe extern "C" fn(usize, StackPoin
         .cfi_adjust_cfa_offset -8
         .cfi_restore %rbp
 
+        # If the returned value is nonzero, trigger an unwind in the parent
+        # context with the given exception object.
+        movq    %rax, %rdi
+        testq   %rax, %rax
+        jnz     ${1:c}
+
+        # Clear the stack pointer. We can't call into this context any more once
+        # the function has returned.
+        xorq    %rsi, %rsi
+
         # Return into the parent context. Use `pop` and `jmp` instead of a `ret`
         # to avoid return address mispredictions (~8ns per `ret` on Ivy Bridge).
         popq    %rax
@@ -149,7 +158,10 @@ pub unsafe fn init(stack_base: *mut u8, f: unsafe extern "C" fn(usize, StackPoin
         .cfi_register %rip, %rax
         jmpq    *%rax
       "#
-      : : : : "volatile")
+      :
+      : "s" (unwind::unwind_wrapper as usize)
+        "s" (unwind::start_unwind as usize)
+      : : "volatile")
   }
 
   // We set up the stack in a somewhat special way so that to the unwinder it
@@ -268,4 +280,42 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
       "cc", "dirflag", "fpsr", "flags", "memory"
     : "volatile", "alignstack");
   (ret, mem::transmute(ret_sp))
+}
+
+#[inline(always)]
+pub unsafe fn unwind(new_sp: StackPointer, new_stack_base: *mut u8) {
+  // Argument to pass to start_unwind, based on the stack base address.
+  let arg = unwind::unwind_arg(new_stack_base);
+
+  // This is identical to swap_link, except that it performs a tail call to
+  // start_unwind instead of returning into the target context.
+  asm!(
+    r#"
+        leaq    0f(%rip), %rax
+        pushq   %rax
+        pushq   %rbp
+        movq    %rsp, -32(%rcx)
+        movq    %rdx, %rsp
+        popq    %rbp
+
+        # Jump to the start_unwind function, which will force a stack unwind in
+        # the target context. This will eventually return to us through the
+        # stack link.
+        jmp     ${0:c}@plt
+      0:
+    "#
+    :
+    : "s" (unwind::start_unwind as usize)
+      "{rdi}" (arg)
+      "{rdx}" (new_sp.0)
+      "{rcx}" (new_stack_base)
+    : "rax",   "rbx",   "rcx",   "rdx",   "rsi",   "rdi", /*"rbp",   "rsp",*/
+      "r8",    "r9",    "r10",   "r11",   "r12",   "r13",   "r14",   "r15",
+      "mm0",   "mm1",   "mm2",   "mm3",   "mm4",   "mm5",   "mm6",   "mm7",
+      "xmm0",  "xmm1",  "xmm2",  "xmm3",  "xmm4",  "xmm5",  "xmm6",  "xmm7",
+      "xmm8",  "xmm9",  "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15",
+      "xmm16", "xmm17", "xmm18", "xmm19", "xmm20", "xmm21", "xmm22", "xmm23",
+      "xmm24", "xmm25", "xmm26", "xmm27", "xmm28", "xmm29", "xmm30", "xmm31",
+      "cc", "dirflag", "fpsr", "flags", "memory"
+    : "volatile", "alignstack");
 }
