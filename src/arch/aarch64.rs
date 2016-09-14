@@ -47,14 +47,12 @@
 //   from the stack frame at x29 (in the parent stack), thus continuing
 //   unwinding at the swap call site instead of falling off the end of context stack.
 use core::mem;
-use stack::Stack;
+use stack;
+use arch::StackPointer;
 
 pub const STACK_ALIGNMENT: usize = 16;
 
-#[derive(Debug, Clone, Copy)]
-pub struct StackPointer(*mut usize);
-
-pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
+pub unsafe fn init<Stack: stack::Stack>(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer)) -> StackPointer {
   #[cfg(not(target_vendor = "apple"))]
   #[naked]
   unsafe extern "C" fn trampoline_1() {
@@ -129,13 +127,27 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
         # Call the provided function.
         ldr     x2, [sp, #16]
         blr     x2
+
+        # Clear the stack pointer. We can't call into this context any more once
+        # the function has returned.
+        mov     x1, #0
+
+        # Restore the stack pointer of the parent context. No CFI adjustments
+        # are needed since we have the same stack frame as trampoline_1.
+        ldr     x2, [sp]
+        mov     sp, x2
+
+        # Load frame and instruction pointers of the parent context.
+        ldp     x29, x30, [sp], #16
+        .cfi_adjust_cfa_offset -16
+        .cfi_restore x29
+        .cfi_restore x30
+
+        # Return into the parent context. Use `br` instead of a `ret` to avoid
+        # return address mispredictions.
+        br      x30
       "#
       : : : : "volatile")
-  }
-
-  unsafe fn push(sp: &mut StackPointer, val: usize) {
-    sp.0 = sp.0.offset(-1);
-    *sp.0 = val
   }
 
   // We set up the stack in a somewhat special way so that to the unwinder it
@@ -146,36 +158,30 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
   // followed by the x29 value for that frame. This setup supports unwinding
   // using DWARF CFI as well as the frame pointer-based unwinding used by tools
   // such as perf or dtrace.
-  let mut sp = StackPointer(stack.base() as *mut usize);
+  let mut sp = StackPointer::stack_base(stack);
 
-  push(&mut sp, 0 as usize); // Padding to ensure the stack is properly aligned
-  push(&mut sp, f as usize); // Function that trampoline_2 should call
+  sp.push(0 as usize); // Padding to ensure the stack is properly aligned
+  sp.push(f as usize); // Function that trampoline_2 should call
 
   // Call frame for trampoline_2. The CFA slot is updated by swap::trampoline
   // each time a context switch is performed.
-  push(&mut sp, trampoline_1 as usize + 4); // Return after the nop
-  push(&mut sp, 0xdeaddeaddead0cfa);        // CFA slot
+  sp.push(trampoline_1 as usize + 4); // Return after the nop
+  sp.push(0xdeaddeaddead0cfa);        // CFA slot
 
   // Call frame for swap::trampoline. We set up the x29 value to point to the
   // parent call frame.
-  let frame = sp;
-  push(&mut sp, trampoline_2 as usize + 4); // Entry point, skip initial nop
-  push(&mut sp, frame.0 as usize);          // Pointer to parent call frame
+  let frame = sp.offset(0);
+  sp.push(trampoline_2 as usize + 4); // Entry point, skip initial nop
+  sp.push(frame as usize);            // Pointer to parent call frame
 
   sp
 }
 
 #[inline(always)]
-pub unsafe fn swap(arg: usize, new_sp: StackPointer,
-                   new_stack: Option<&Stack>) -> (usize, StackPointer) {
+pub unsafe fn swap_link<Stack: stack::Stack>(arg: usize, new_sp: StackPointer,
+                                             new_stack: &Stack) -> (usize, Option<StackPointer>) {
   // Address of the topmost CFA stack slot.
-  let mut dummy: usize = mem::uninitialized();
-  let new_cfa = if let Some(new_stack) = new_stack {
-    (new_stack.base() as *mut usize).offset(-4)
-  } else {
-    // Just pass a dummy pointer if we aren't linking the stack
-    &mut dummy
-  };
+  let new_cfa = StackPointer::stack_base(new_stack).offset(-4);
 
   #[naked]
   unsafe extern "C" fn trampoline() {
@@ -213,7 +219,7 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
   }
 
   let ret: usize;
-  let ret_sp: *mut usize;
+  let ret_sp: usize;
   asm!(
     r#"
       # Call the trampoline to switch to the new context.
@@ -240,5 +246,67 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
       // the "alignstack" LLVM inline assembly option does exactly the same
       // thing on AArch64.
     : "volatile", "alignstack");
-  (ret, StackPointer(ret_sp))
+  (ret, mem::transmute(ret_sp))
+}
+
+#[inline(always)]
+pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
+  #[naked]
+  unsafe extern "C" fn trampoline() {
+    asm!(
+      r#"
+        # Save the frame pointer and link register; the unwinder uses them to find
+        # the CFA of the caller, and so they have to have the correct value immediately
+        # after the call instruction that invoked the trampoline.
+        stp     x29, x30, [sp, #-16]!
+        .cfi_adjust_cfa_offset 16
+        .cfi_rel_offset x30, 8
+        .cfi_rel_offset x29, 0
+
+        # Pass the stack pointer of the old context to the new one.
+        mov     x1, sp
+        # Load stack pointer of the new context.
+        mov     sp, x2
+
+        # Load frame and instruction pointers of the new context.
+        ldp     x29, x30, [sp], #16
+        .cfi_adjust_cfa_offset -16
+        .cfi_restore x29
+        .cfi_restore x30
+
+        # Return into the new context. Use `br` instead of a `ret` to avoid
+        # return address mispredictions.
+        br      x30
+      "#
+      : : : : "volatile")
+  }
+
+  let ret: usize;
+  let ret_sp: usize;
+  asm!(
+    r#"
+      # Call the trampoline to switch to the new context.
+      bl      ${2}
+    "#
+    : "={x0}" (ret)
+      "={x1}" (ret_sp)
+    : "s" (trampoline as usize)
+      "{x0}" (arg)
+      "{x2}" (new_sp.0)
+    :/*x0,   "x1",*/"x2",  "x3",  "x4",  "x5",  "x6",  "x7",
+      "x8",  "x9",  "x10", "x11", "x12", "x13", "x14", "x15",
+      "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23",
+      "x24", "x25", "x26", "x27", "x28",/*fp,*/ "lr", /*sp,*/
+      "v0",  "v1",  "v2",  "v3",  "v4",  "v5",  "v6",  "v7",
+      "v8",  "v9",  "v10", "v11", "v12", "v13", "v14", "v15",
+      "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23",
+      "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31",
+      "cc", "memory"
+      // Ideally, we would set the LLVM "noredzone" attribute on this function
+      // (and it would be propagated to the call site). Unfortunately, rustc
+      // provides no such functionality. Fortunately, by a lucky coincidence,
+      // the "alignstack" LLVM inline assembly option does exactly the same
+      // thing on AArch64.
+    : "volatile", "alignstack");
+  (ret, mem::transmute(ret_sp))
 }
