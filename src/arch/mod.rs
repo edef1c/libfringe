@@ -7,6 +7,7 @@
 // copied, modified, or distributed except according to those terms.
 
 pub use self::imp::*;
+use core::nonzero::NonZero;
 
 #[allow(unused_attributes)] // rust-lang/rust#35584
 #[cfg_attr(target_arch = "x86",     path = "x86.rs")]
@@ -15,65 +16,86 @@ pub use self::imp::*;
 #[cfg_attr(target_arch = "or1k",    path = "or1k.rs")]
 mod imp;
 
+#[derive(Debug, Clone, Copy)]
+pub struct StackPointer(NonZero<*mut usize>);
+
+impl StackPointer {
+  #[inline(always)]
+  pub unsafe fn push(&mut self, val: usize) {
+    self.0 = NonZero::new(self.0.offset(-1));
+    **self.0 = val;
+  }
+
+  #[inline(always)]
+  pub unsafe fn new(sp: *mut u8) -> StackPointer {
+    StackPointer(NonZero::new(sp as *mut usize))
+  }
+
+  #[inline(always)]
+  pub unsafe fn offset(&self, count: isize) -> *mut usize {
+    self.0.offset(count)
+  }
+}
+
 #[cfg(test)]
 mod tests {
   extern crate test;
   extern crate simd;
 
   use arch::{self, StackPointer};
-  use ::OsStack;
+  use ::{Stack, OsStack};
 
   #[test]
   fn context() {
-    unsafe extern "C" fn adder(arg: usize, stack_ptr: StackPointer) -> ! {
+    unsafe extern "C" fn adder(arg: usize, stack_ptr: StackPointer) {
       println!("it's alive! arg: {}", arg);
-      let (arg, stack_ptr) = arch::swap(arg + 1, stack_ptr, None);
+      let (arg, stack_ptr) = arch::swap(arg + 1, stack_ptr);
       println!("still alive! arg: {}", arg);
-      arch::swap(arg + 1, stack_ptr, None);
+      arch::swap(arg + 1, stack_ptr);
       panic!("i should be dead");
     }
 
     unsafe {
       let stack = OsStack::new(4 << 20).unwrap();
-      let stack_ptr = arch::init(&stack, adder);
+      let stack_ptr = arch::init(stack.base(), adder);
 
-      let (ret, stack_ptr) = arch::swap(10, stack_ptr, Some(&stack));
+      let (ret, stack_ptr) = arch::swap_link(10, stack_ptr, stack.base());
       assert_eq!(ret, 11);
-      let (ret, _) = arch::swap(50, stack_ptr, Some(&stack));
+      let (ret, _) = arch::swap_link(50, stack_ptr.unwrap(), stack.base());
       assert_eq!(ret, 51);
     }
   }
 
   #[test]
   fn context_simd() {
-    unsafe extern "C" fn permuter(arg: usize, stack_ptr: StackPointer) -> ! {
+    unsafe extern "C" fn permuter(arg: usize, stack_ptr: StackPointer) {
       // This will crash if the stack is not aligned properly.
       let x = simd::i32x4::splat(arg as i32);
       let y = x * x;
       println!("simd result: {:?}", y);
-      let (_, stack_ptr) = arch::swap(0, stack_ptr, None);
+      let (_, stack_ptr) = arch::swap(0, stack_ptr);
       // And try again after a context switch.
       let x = simd::i32x4::splat(arg as i32);
       let y = x * x;
       println!("simd result: {:?}", y);
-      arch::swap(0, stack_ptr, None);
+      arch::swap(0, stack_ptr);
       panic!("i should be dead");
     }
 
     unsafe {
       let stack = OsStack::new(4 << 20).unwrap();
-      let stack_ptr = arch::init(&stack, permuter);
+      let stack_ptr = arch::init(stack.base(), permuter);
 
-      let (_, stack_ptr) = arch::swap(10, stack_ptr, Some(&stack));
-      arch::swap(20, stack_ptr, Some(&stack));
+      let (_, stack_ptr) = arch::swap_link(10, stack_ptr, stack.base());
+      arch::swap_link(20, stack_ptr.unwrap(), stack.base());
     }
   }
 
-  unsafe extern "C" fn do_panic(arg: usize, stack_ptr: StackPointer) -> ! {
+  unsafe extern "C" fn do_panic(arg: usize, stack_ptr: StackPointer) {
     match arg {
       0 => panic!("arg=0"),
       1 => {
-        arch::swap(0, stack_ptr, None);
+        arch::swap(0, stack_ptr);
         panic!("arg=1");
       }
       _ => unreachable!()
@@ -85,9 +107,9 @@ mod tests {
   fn panic_after_start() {
     unsafe {
       let stack = OsStack::new(4 << 20).unwrap();
-      let stack_ptr = arch::init(&stack, do_panic);
+      let stack_ptr = arch::init(stack.base(), do_panic);
 
-      arch::swap(0, stack_ptr, Some(&stack));
+      arch::swap_link(0, stack_ptr, stack.base());
     }
   }
 
@@ -96,20 +118,33 @@ mod tests {
   fn panic_after_swap() {
     unsafe {
       let stack = OsStack::new(4 << 20).unwrap();
-      let stack_ptr = arch::init(&stack, do_panic);
+      let stack_ptr = arch::init(stack.base(), do_panic);
 
-      let (_, stack_ptr) = arch::swap(1, stack_ptr, Some(&stack));
-      arch::swap(0, stack_ptr, Some(&stack));
+      let (_, stack_ptr) = arch::swap_link(1, stack_ptr, stack.base());
+      arch::swap_link(0, stack_ptr.unwrap(), stack.base());
+    }
+  }
+
+  #[test]
+  fn ret() {
+    unsafe extern "C" fn ret2(_: usize, _: StackPointer) {}
+
+    unsafe {
+      let stack = OsStack::new(4 << 20).unwrap();
+      let stack_ptr = arch::init(stack.base(), ret2);
+
+      let (_, stack_ptr) = arch::swap_link(0, stack_ptr, stack.base());
+      assert!(stack_ptr.is_none());
     }
   }
 
   #[bench]
   fn swap(b: &mut test::Bencher) {
-    unsafe extern "C" fn loopback(mut arg: usize, mut stack_ptr: StackPointer) -> ! {
+    unsafe extern "C" fn loopback(mut arg: usize, mut stack_ptr: StackPointer) {
       // This deliberately does not ignore arg, to measure the time it takes
       // to move the return value between registers.
       loop {
-        let data = arch::swap(arg, stack_ptr, None);
+        let data = arch::swap(arg, stack_ptr);
         arg = data.0;
         stack_ptr = data.1;
       }
@@ -117,10 +152,10 @@ mod tests {
 
     unsafe {
       let stack = OsStack::new(4 << 20).unwrap();
-      let mut stack_ptr = arch::init(&stack, loopback);
+      let mut stack_ptr = arch::init(stack.base(), loopback);
 
       b.iter(|| for _ in 0..10 {
-        stack_ptr = arch::swap(0, stack_ptr, Some(&stack)).1;
+        stack_ptr = arch::swap_link(0, stack_ptr, stack.base()).1.unwrap();
       });
     }
   }
