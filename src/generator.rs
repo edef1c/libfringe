@@ -81,10 +81,9 @@ pub enum State {
 /// ```
 #[derive(Debug)]
 pub struct Generator<'a, Input: 'a, Output: 'a, Stack: stack::Stack> {
-  state:     State,
   stack:     Stack,
   stack_id:  debug::StackId,
-  stack_ptr: arch::StackPointer,
+  stack_ptr: Option<arch::StackPointer>,
   phantom:   PhantomData<(&'a (), *mut Input, *const Output)>
 }
 
@@ -111,29 +110,26 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
   pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
       where F: FnOnce(&Yielder<Input, Output>, Input) + Send + 'a {
-    unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer) -> !
+    unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer)
         where Stack: stack::Stack, F: FnOnce(&Yielder<Input, Output>, Input) {
       // Retrieve our environment from the callee and return control to it.
       let f = ptr::read(env as *const F);
-      let (data, stack_ptr) = arch::swap(0, stack_ptr, None);
+      let (data, stack_ptr) = arch::swap(0, stack_ptr);
       // See the second half of Yielder::suspend_bare.
       let input = ptr::read(data as *const Input);
       // Run the body of the generator.
       let yielder = Yielder::new(stack_ptr);
       f(&yielder, input);
-      // Past this point, the generator has dropped everything it has held.
-      loop { yielder.suspend_bare(None); }
     }
 
     let stack_id  = debug::StackId::register(&stack);
-    let stack_ptr = arch::init(&stack, generator_wrapper::<Input, Output, Stack, F>);
+    let stack_ptr = arch::init(stack.base(), generator_wrapper::<Input, Output, Stack, F>);
 
     // Transfer environment to the callee.
-    let stack_ptr = arch::swap(&f as *const F as usize, stack_ptr, Some(&stack)).1;
+    let stack_ptr = arch::swap_link(&f as *const F as usize, stack_ptr, stack.base()).1;
     mem::forget(f);
 
     Generator {
-      state:     State::Runnable,
       stack:     stack,
       stack_id:  stack_id,
       stack_ptr: stack_ptr,
@@ -145,40 +141,37 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// If the generator function has returned, returns `None`.
   #[inline]
   pub fn resume(&mut self, input: Input) -> Option<Output> {
-    match self.state {
-      State::Runnable => {
-        // Set the state to Unavailable. Since we have exclusive access to the generator,
-        // the only case where this matters is the generator function panics, after which
-        // it must not be invocable again.
-        self.state = State::Unavailable;
+    // Return None if we have no stack pointer (generator function already returned).
+    self.stack_ptr.and_then(|stack_ptr| {
+      // Set the state to Unavailable. Since we have exclusive access to the generator,
+      // the only case where this matters is the generator function panics, after which
+      // it must not be invocable again.
+      self.stack_ptr = None;
 
-        // Switch to the generator function, and retrieve the yielded value.
-        let val = unsafe {
-          let (data_out, stack_ptr) = arch::swap(&input as *const Input as usize, self.stack_ptr, Some(&self.stack));
-          self.stack_ptr = stack_ptr;
-          mem::forget(input);
-          ptr::read(data_out as *const Option<Output>)
-        };
+      // Switch to the generator function, and retrieve the yielded value.
+      unsafe {
+        let (data_out, stack_ptr) = arch::swap_link(&input as *const Input as usize, stack_ptr, self.stack.base());
+        self.stack_ptr = stack_ptr;
+        mem::forget(input);
 
-        // Unless the generator function has returned, it can be switched to again, so
-        // set the state to Runnable.
-        if val.is_some() { self.state = State::Runnable }
-
-        val
+        // If the generator function has finished, return None, otherwise return the
+        // yielded value.
+        stack_ptr.map(|_| ptr::read(data_out as *const Output))
       }
-      State::Unavailable => None
-    }
+    })
   }
 
   /// Returns the state of the generator.
   #[inline]
-  pub fn state(&self) -> State { self.state }
+  pub fn state(&self) -> State {
+    if self.stack_ptr.is_some() { State::Runnable } else { State::Unavailable }
+  }
 
   /// Extracts the stack from a generator when the generator function has returned.
   /// If the generator function has not returned
   /// (i.e. `self.state() == State::Runnable`), panics.
   pub fn unwrap(self) -> Stack {
-    match self.state {
+    match self.state() {
       State::Runnable    => panic!("Argh! Bastard! Don't touch that!"),
       State::Unavailable => self.stack
     }
@@ -201,21 +194,16 @@ impl<Input, Output> Yielder<Input, Output> {
     }
   }
 
-  #[inline(always)]
-  fn suspend_bare(&self, val: Option<Output>) -> Input {
-    unsafe {
-      let (data, stack_ptr) = arch::swap(&val as *const Option<Output> as usize, self.stack_ptr.get(), None);
-      self.stack_ptr.set(stack_ptr);
-      mem::forget(val);
-      ptr::read(data as *const Input)
-    }
-  }
-
   /// Suspends the generator and returns `Some(item)` from the `resume()`
   /// invocation that resumed the generator.
   #[inline(always)]
   pub fn suspend(&self, item: Output) -> Input {
-    self.suspend_bare(Some(item))
+    unsafe {
+      let (data, stack_ptr) = arch::swap(&item as *const Output as usize, self.stack_ptr.get());
+      mem::forget(item);
+      self.stack_ptr.set(stack_ptr);
+      ptr::read(data as *const Input)
+    }
   }
 }
 
