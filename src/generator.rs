@@ -80,7 +80,7 @@ pub enum State {
 /// println!("{:?}", nat.next()); // prints Some(2)
 /// ```
 #[derive(Debug)]
-pub struct Generator<'a, Input: Send, Output: Send, Stack: stack::Stack> {
+pub struct Generator<'a, Input: Send + 'a, Output: Send + 'a, Stack: stack::Stack> {
   state:     State,
   stack:     Stack,
   stack_id:  debug::StackId,
@@ -89,7 +89,7 @@ pub struct Generator<'a, Input: Send, Output: Send, Stack: stack::Stack> {
 }
 
 impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
-    where Input: Send, Output: Send, Stack: stack::Stack {
+    where Input: Send + 'a, Output: Send + 'a, Stack: stack::Stack {
   /// Creates a new generator.
   ///
   /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
@@ -219,7 +219,7 @@ impl<Input, Output> Yielder<Input, Output>
 }
 
 impl<'a, Output, Stack> Iterator for Generator<'a, (), Output, Stack>
-    where Output: Send, Stack: stack::Stack {
+    where Output: Send + 'a, Stack: stack::Stack {
   type Item = Output;
 
   fn next(&mut self) -> Option<Self::Item> { self.resume(()) }
