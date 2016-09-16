@@ -85,7 +85,7 @@ pub struct Generator<Input: Send, Output: Send, Stack: stack::Stack> {
   stack:     Stack,
   stack_id:  debug::StackId,
   stack_ptr: arch::StackPointer,
-  phantom:   (PhantomData<*const Input>, PhantomData<*const Output>)
+  phantom:   PhantomData<(*const Input, *const Output)>
 }
 
 impl<Input, Output, Stack> Generator<Input, Output, Stack>
@@ -135,7 +135,7 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
       stack:     stack,
       stack_id:  stack_id,
       stack_ptr: stack_ptr,
-      phantom:   (PhantomData, PhantomData)
+      phantom:   PhantomData
     }
   }
 
@@ -188,7 +188,7 @@ impl<Input, Output, Stack> Generator<Input, Output, Stack>
 #[derive(Debug)]
 pub struct Yielder<Input: Send, Output: Send> {
   stack_ptr: Cell<StackPointer>,
-  phantom: (PhantomData<*const Input>, PhantomData<*const Output>)
+  phantom: PhantomData<(*const Input, *const Output)>
 }
 
 impl<Input, Output> Yielder<Input, Output>
@@ -196,7 +196,7 @@ impl<Input, Output> Yielder<Input, Output>
   fn new(stack_ptr: StackPointer) -> Yielder<Input, Output> {
     Yielder {
       stack_ptr: Cell::new(stack_ptr),
-      phantom: (PhantomData, PhantomData)
+      phantom: PhantomData
     }
   }
 
