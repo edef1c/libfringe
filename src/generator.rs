@@ -88,6 +88,9 @@ pub struct Generator<'a, Input: Send + 'a, Output: Send + 'a, Stack: stack::Stac
   phantom:   PhantomData<(&'a (), *mut Input, *const Output)>
 }
 
+unsafe impl<'a, Input, Output, Stack> Send for Generator<'a, Input, Output, Stack>
+  where Input: Send + 'a, Output: Send + 'a, Stack: stack::Stack + Send {}
+
 impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
     where Input: Send + 'a, Output: Send + 'a, Stack: stack::Stack {
   /// Creates a new generator.
