@@ -93,9 +93,9 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// Creates a new generator.
   ///
   /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
-  pub fn new<F: 'a>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
+  pub fn new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
       where Stack: stack::GuardedStack,
-            F: FnOnce(&Yielder<Input, Output>, Input) + Send {
+            F: FnOnce(&Yielder<Input, Output>, Input) + Send + 'a {
     unsafe { Generator::unsafe_new(stack, f) }
   }
 
@@ -106,8 +106,8 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// guarded stacks do not exist, e.g. in absence of an MMU.
   ///
   /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
-  pub unsafe fn unsafe_new<F: 'a>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
-      where F: FnOnce(&Yielder<Input, Output>, Input) + Send {
+  pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
+      where F: FnOnce(&Yielder<Input, Output>, Input) + Send + 'a {
     unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer) -> !
         where Input: Send, Output: Send, Stack: stack::Stack,
               F: FnOnce(&Yielder<Input, Output>, Input) {
