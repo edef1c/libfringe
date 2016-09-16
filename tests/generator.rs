@@ -10,7 +10,7 @@ extern crate fringe;
 use fringe::{SliceStack, OwnedStack, OsStack};
 use fringe::generator::{Generator, Yielder};
 
-fn add_one_fn(yielder: &mut Yielder<i32, i32>, mut input: i32) {
+fn add_one_fn(yielder: &Yielder<i32, i32>, mut input: i32) {
   loop {
     if input == 0 { break }
     input = yielder.suspend(input + 1)

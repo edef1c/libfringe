@@ -95,7 +95,7 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
   pub fn new<F: 'a>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
       where Stack: stack::GuardedStack,
-            F: FnOnce(&mut Yielder<Input, Output>, Input) + Send {
+            F: FnOnce(&Yielder<Input, Output>, Input) + Send {
     unsafe { Generator::unsafe_new(stack, f) }
   }
 
@@ -107,18 +107,18 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   ///
   /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
   pub unsafe fn unsafe_new<F: 'a>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
-      where F: FnOnce(&mut Yielder<Input, Output>, Input) + Send {
+      where F: FnOnce(&Yielder<Input, Output>, Input) + Send {
     unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer) -> !
         where Input: Send, Output: Send, Stack: stack::Stack,
-              F: FnOnce(&mut Yielder<Input, Output>, Input) {
+              F: FnOnce(&Yielder<Input, Output>, Input) {
       // Retrieve our environment from the callee and return control to it.
       let f = ptr::read(env as *const F);
       let (data, stack_ptr) = arch::swap(0, stack_ptr, None);
       // See the second half of Yielder::suspend_bare.
       let input = ptr::read(data as *const Input);
       // Run the body of the generator.
-      let mut yielder = Yielder::new(stack_ptr);
-      f(&mut yielder, input);
+      let yielder = Yielder::new(stack_ptr);
+      f(&yielder, input);
       // Past this point, the generator has dropped everything it has held.
       loop { yielder.suspend_bare(None); }
     }
