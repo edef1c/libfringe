@@ -14,4 +14,7 @@ script:
 after_success:
   - .travis/docs/after_success
 notifications:
-  irc: "irc.mozilla.org#libfringe"
+  irc:
+    channels:
+      - "irc.mozilla.org#libfringe"
+    skip_join: true
