@@ -41,6 +41,7 @@
 // * The 1st init trampoline tells the unwinder to restore r2 and r9
 //   from the stack frame at r2 (in the parent stack), thus continuing
 //   unwinding at the swap call site instead of falling off the end of context stack.
+use core::mem;
 use stack::Stack;
 
 pub const STACK_ALIGNMENT: usize = 4;
@@ -101,11 +102,11 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
         # doesn't point to the start of the symbol. This confuses gdb's backtraces,
         # causing them to think the parent function is trampoline_1 instead of
         # trampoline_2.
-        nop
+        l.nop
 
         # Call the provided function.
-        l.lwz   r4, 8(r1)
-        l.jalr  r4
+        l.lwz   r5, 8(r1)
+        l.jalr  r5
         l.nop
       "#
       : : : : "volatile")
