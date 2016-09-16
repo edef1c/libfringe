@@ -18,3 +18,4 @@ notifications:
     channels:
       - "irc.mozilla.org#libfringe"
     skip_join: true
+    use_notice: true
