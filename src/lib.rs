@@ -33,16 +33,8 @@
 #[macro_use]
 extern crate std;
 
-pub use stack::Stack;
-pub use stack::GuardedStack;
-pub use slice_stack::SliceStack;
+pub use stack::*;
 pub use generator::Generator;
-
-#[cfg(feature = "alloc")]
-pub use owned_stack::OwnedStack;
-
-#[cfg(unix)]
-pub use os::Stack as OsStack;
 
 mod arch;
 
@@ -51,12 +43,6 @@ pub const STACK_ALIGNMENT: usize = arch::STACK_ALIGNMENT;
 
 mod debug;
 
-mod stack;
-mod slice_stack;
 pub mod generator;
 
-#[cfg(feature = "alloc")]
-mod owned_stack;
-
-#[cfg(unix)]
-mod os;
+mod stack;

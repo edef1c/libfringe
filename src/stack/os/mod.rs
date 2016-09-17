@@ -5,27 +5,28 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 extern crate std;
+
 use self::std::io::Error as IoError;
-use stack;
+use stack::{Stack, GuardedStack};
 
 mod sys;
 
 /// OsStack holds a guarded stack allocated using the operating system's anonymous
 /// memory mapping facility.
 #[derive(Debug)]
-pub struct Stack {
+pub struct OsStack {
   ptr: *mut u8,
-  len: usize
+  len: usize,
 }
 
-unsafe impl Send for Stack {}
+unsafe impl Send for OsStack {}
 
-impl Stack {
+impl OsStack {
   /// Allocates a new stack with at least `size` accessible bytes.
-  /// `size` is rounded up to an integral number of pages; `Stack::new(0)` is legal
+  /// `size` is rounded up to an integral number of pages; `OsStack::new(0)` is legal
   /// and allocates the smallest possible stack, consisting of one data page and
   /// one guard page.
-  pub fn new(size: usize) -> Result<Stack, IoError> {
+  pub fn new(size: usize) -> Result<OsStack, IoError> {
     let page_size = sys::page_size();
 
     // Stacks have to be at least one page long.
@@ -39,9 +40,10 @@ impl Stack {
     let len = len + page_size;
 
     // Allocate a stack.
-    let stack = Stack {
-      ptr: try!(unsafe { sys::map_stack(len) }),
-      len: len
+    let ptr = try!(unsafe { sys::map_stack(len) });
+    let stack = OsStack {
+      ptr: ptr,
+      len: len,
     };
 
     // Mark the guard page. If this fails, `stack` will be dropped,
@@ -52,7 +54,7 @@ impl Stack {
   }
 }
 
-impl stack::Stack for Stack {
+unsafe impl Stack for OsStack {
   #[inline(always)]
   fn base(&self) -> *mut u8 {
     unsafe {
@@ -68,9 +70,9 @@ impl stack::Stack for Stack {
   }
 }
 
-unsafe impl stack::GuardedStack for Stack {}
+unsafe impl GuardedStack for OsStack {}
 
-impl Drop for Stack {
+impl Drop for OsStack {
   fn drop(&mut self) {
     unsafe { sys::unmap_stack(self.ptr, self.len) }.expect("cannot unmap stack")
   }
