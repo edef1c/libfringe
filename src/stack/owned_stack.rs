@@ -6,6 +6,7 @@ extern crate alloc;
 use core::slice;
 use self::alloc::heap;
 use self::alloc::boxed::Box;
+use stack::Stack;
 
 /// OwnedStack holds a non-guarded, heap-allocated stack.
 #[derive(Debug)]
@@ -16,18 +17,19 @@ impl OwnedStack {
     /// for the current platform using the default Rust allocator.
     pub fn new(size: usize) -> OwnedStack {
         unsafe {
-            let ptr = heap::allocate(size, ::STACK_ALIGNMENT);
-            OwnedStack(Box::from_raw(slice::from_raw_parts_mut(ptr, size)))
+            let aligned_size = size & !(::STACK_ALIGNMENT - 1);
+            let ptr = heap::allocate(aligned_size, ::STACK_ALIGNMENT);
+            OwnedStack(Box::from_raw(slice::from_raw_parts_mut(ptr, aligned_size)))
         }
     }
 }
 
-impl ::stack::Stack for OwnedStack {
+unsafe impl Stack for OwnedStack {
     #[inline(always)]
     fn base(&self) -> *mut u8 {
         // The slice cannot wrap around the address space, so the conversion from usize
         // to isize will not wrap either.
-        let len: isize = self.0.len() as isize;
+        let len = self.0.len() as isize;
         unsafe { self.limit().offset(len) }
     }
 

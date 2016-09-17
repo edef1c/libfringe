@@ -6,6 +6,19 @@
 // copied, modified, or distributed except according to those terms.
 //! Traits for stacks.
 
+mod slice_stack;
+pub use stack::slice_stack::SliceStack;
+
+#[cfg(feature = "alloc")]
+mod owned_stack;
+#[cfg(feature = "alloc")]
+pub use stack::owned_stack::OwnedStack;
+
+#[cfg(unix)]
+mod os;
+#[cfg(unix)]
+pub use stack::os::OsStack;
+
 /// A trait for objects that hold ownership of a stack.
 ///
 /// To preserve memory safety, an implementation of this trait must fulfill
@@ -16,7 +29,7 @@
 ///   * Every address between the base and the limit must be readable and writable.
 ///
 /// [align]: constant.STACK_ALIGNMENT.html
-pub trait Stack {
+pub unsafe trait Stack {
   /// Returns the base address of the stack.
   /// On all modern architectures, the stack grows downwards,
   /// so this is the highest address.
