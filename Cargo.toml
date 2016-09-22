@@ -2,7 +2,7 @@
 authors = ["edef <edef@edef.eu>"]
 name = "fringe"
 description = "safe, lightweight userland context switches"
-version = "1.2.0"
+version = "1.2.1"
 license = "Apache-2.0/MIT"
 homepage = "https://github.com/edef1c/libfringe"
 repository = "https://github.com/edef1c/libfringe"
