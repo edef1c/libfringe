@@ -1,6 +1,7 @@
 [![crates][crates-badge]][crates-url]
 [![travis][travis-badge]][travis-url]
 [![rustdoc][rustdoc-badge]][rustdoc-url]
+[![irccloud][irccloud-badge]][irccloud-url]
 
 [crates-badge]: https://img.shields.io/crates/v/fringe.svg?style=flat-square
 [crates-url]: https://crates.io/crates/fringe
@@ -8,6 +9,8 @@
 [travis-url]: https://travis-ci.org/nathan7/libfringe
 [rustdoc-badge]: https://img.shields.io/badge/docs-rustdoc-brightgreen.svg?style=flat-square
 [rustdoc-url]: https://nathan7.github.io/libfringe
+[irccloud-badge]: https://img.shields.io/badge/IRC-%23libfringe-1e72ff.svg?style=flat-square
+[irccloud-url]: https://www.irccloud.com/invite?channel=%23libfringe&hostname=irc.mozilla.org&port=6697&ssl=1
 
 # libfringe
 
