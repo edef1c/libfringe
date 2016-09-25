@@ -80,7 +80,7 @@ pub enum State {
 /// println!("{:?}", nat.next()); // prints Some(2)
 /// ```
 #[derive(Debug)]
-pub struct Generator<'a, Input: Send + 'a, Output: Send + 'a, Stack: stack::Stack> {
+pub struct Generator<'a, Input: 'a, Output: 'a, Stack: stack::Stack> {
   state:     State,
   stack:     Stack,
   stack_id:  debug::StackId,
@@ -92,7 +92,7 @@ unsafe impl<'a, Input, Output, Stack> Send for Generator<'a, Input, Output, Stac
   where Input: Send + 'a, Output: Send + 'a, Stack: stack::Stack + Send {}
 
 impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
-    where Input: Send + 'a, Output: Send + 'a, Stack: stack::Stack {
+    where Input: 'a, Output: 'a, Stack: stack::Stack {
   /// Creates a new generator.
   ///
   /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
@@ -112,8 +112,7 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
       where F: FnOnce(&Yielder<Input, Output>, Input) + Send + 'a {
     unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer) -> !
-        where Input: Send, Output: Send, Stack: stack::Stack,
-              F: FnOnce(&Yielder<Input, Output>, Input) {
+        where Stack: stack::Stack, F: FnOnce(&Yielder<Input, Output>, Input) {
       // Retrieve our environment from the callee and return control to it.
       let f = ptr::read(env as *const F);
       let (data, stack_ptr) = arch::swap(0, stack_ptr, None);
@@ -189,13 +188,12 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
 /// Yielder is an interface provided to every generator through which it
 /// returns a value.
 #[derive(Debug)]
-pub struct Yielder<Input: Send, Output: Send> {
+pub struct Yielder<Input, Output> {
   stack_ptr: Cell<StackPointer>,
   phantom: PhantomData<(*const Input, *mut Output)>
 }
 
-impl<Input, Output> Yielder<Input, Output>
-    where Input: Send, Output: Send {
+impl<Input, Output> Yielder<Input, Output> {
   fn new(stack_ptr: StackPointer) -> Yielder<Input, Output> {
     Yielder {
       stack_ptr: Cell::new(stack_ptr),
@@ -222,7 +220,7 @@ impl<Input, Output> Yielder<Input, Output>
 }
 
 impl<'a, Output, Stack> Iterator for Generator<'a, (), Output, Stack>
-    where Output: Send + 'a, Stack: stack::Stack {
+    where Output: 'a, Stack: stack::Stack {
   type Item = Output;
 
   fn next(&mut self) -> Option<Self::Item> { self.resume(()) }
