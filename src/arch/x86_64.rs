@@ -259,25 +259,14 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
   unsafe extern "C" fn trampoline() {
     asm!(
       r#"
-        # Save frame pointer explicitly; the unwinder uses it to find CFA of
-        # the caller, and so it has to have the correct value immediately after
-        # the call instruction that invoked the trampoline.
         pushq   %rbp
         .cfi_adjust_cfa_offset 8
         .cfi_rel_offset %rbp, 0
-
-        # Pass the stack pointer of the old context to the new one.
         movq    %rsp, %rsi
-        # Load stack pointer of the new context.
         movq    %rdx, %rsp
-
-        # Restore frame pointer of the new context.
         popq    %rbp
         .cfi_adjust_cfa_offset -8
         .cfi_restore %rbp
-
-        # Return into the new context. Use `pop` and `jmp` instead of a `ret`
-        # to avoid return address mispredictions (~8ns per `ret` on Ivy Bridge).
         popq    %rax
         .cfi_adjust_cfa_offset -8
         .cfi_register %rip, %rax
@@ -290,8 +279,6 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
   let ret_sp: usize;
   asm!(
     r#"
-      # Push instruction pointer of the old context and switch to
-      # the new context.
       call    ${2:c}
     "#
     : "={rdi}" (ret)
@@ -307,11 +294,6 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
       "xmm16", "xmm17", "xmm18", "xmm19", "xmm20", "xmm21", "xmm22", "xmm23",
       "xmm24", "xmm25", "xmm26", "xmm27", "xmm28", "xmm29", "xmm30", "xmm31",
       "cc", "dirflag", "fpsr", "flags", "memory"
-      // Ideally, we would set the LLVM "noredzone" attribute on this function
-      // (and it would be propagated to the call site). Unfortunately, rustc
-      // provides no such functionality. Fortunately, by a lucky coincidence,
-      // the "alignstack" LLVM inline assembly option does exactly the same
-      // thing on x86_64.
     : "volatile", "alignstack");
   (ret, mem::transmute(ret_sp))
 }

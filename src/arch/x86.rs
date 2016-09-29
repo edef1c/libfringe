@@ -250,25 +250,14 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
   unsafe extern "C" fn trampoline() {
     asm!(
       r#"
-        # Save frame pointer explicitly; the unwinder uses it to find CFA of
-        # the caller, and so it has to have the correct value immediately after
-        # the call instruction that invoked the trampoline.
         pushl   %ebp
         .cfi_adjust_cfa_offset 4
         .cfi_rel_offset %ebp, 0
-
-        # Pass the stack pointer of the old context to the new one.
         movl    %esp, %esi
-        # Load stack pointer of the new context.
         movl    %edx, %esp
-
-        # Restore frame pointer of the new context.
         popl    %ebp
         .cfi_adjust_cfa_offset -4
         .cfi_restore %ebp
-
-        # Return into the new context. Use `pop` and `jmp` instead of a `ret`
-        # to avoid return address mispredictions (~8ns per `ret` on Ivy Bridge).
         popl    %eax
         .cfi_adjust_cfa_offset -4
         .cfi_register %eip, %eax
@@ -281,8 +270,6 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
   let ret_sp: usize;
   asm!(
     r#"
-      # Push instruction pointer of the old context and switch to
-      # the new context.
       call    ${2:c}
     "#
     : "={edi}" (ret)

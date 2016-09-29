@@ -218,28 +218,19 @@ pub unsafe fn swap_link<Stack: stack::Stack>(arg: usize, new_sp: StackPointer,
 
 #[inline(always)]
 pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
+  // This is identical to swap_link, but without the write to the CFA slot.
   #[naked]
   unsafe extern "C" fn trampoline() {
     asm!(
       r#"
-        # Save the frame pointer and link register; the unwinder uses them to find
-        # the CFA of the caller, and so they have to have the correct value immediately
-        # after the call instruction that invoked the trampoline.
         l.sw    -4(r1), r2
         l.sw    -8(r1), r9
         .cfi_offset r2, -4
         .cfi_offset r9, -8
-
-        # Pass the stack pointer of the old context to the new one.
         l.or    r4, r0, r1
-        # Load stack pointer of the new context.
         l.or    r1, r0, r5
-
-        # Load frame and instruction pointers of the new context.
         l.lwz   r2, -4(r1)
         l.lwz   r9, -8(r1)
-
-        # Return into the new context.
         l.jr    r9
         l.nop
       "#
@@ -250,7 +241,6 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
   let ret_sp: usize;
   asm!(
     r#"
-      # Call the trampoline to switch to the new context.
       l.jal   ${2}
       l.nop
     "#

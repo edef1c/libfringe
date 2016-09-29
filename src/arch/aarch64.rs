@@ -251,31 +251,21 @@ pub unsafe fn swap_link<Stack: stack::Stack>(arg: usize, new_sp: StackPointer,
 
 #[inline(always)]
 pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
+  // This is identical to swap_link, but without the write to the CFA slot.
   #[naked]
   unsafe extern "C" fn trampoline() {
     asm!(
       r#"
-        # Save the frame pointer and link register; the unwinder uses them to find
-        # the CFA of the caller, and so they have to have the correct value immediately
-        # after the call instruction that invoked the trampoline.
         stp     x29, x30, [sp, #-16]!
         .cfi_adjust_cfa_offset 16
         .cfi_rel_offset x30, 8
         .cfi_rel_offset x29, 0
-
-        # Pass the stack pointer of the old context to the new one.
         mov     x1, sp
-        # Load stack pointer of the new context.
         mov     sp, x2
-
-        # Load frame and instruction pointers of the new context.
         ldp     x29, x30, [sp], #16
         .cfi_adjust_cfa_offset -16
         .cfi_restore x29
         .cfi_restore x30
-
-        # Return into the new context. Use `br` instead of a `ret` to avoid
-        # return address mispredictions.
         br      x30
       "#
       : : : : "volatile")
@@ -285,7 +275,6 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
   let ret_sp: usize;
   asm!(
     r#"
-      # Call the trampoline to switch to the new context.
       bl      ${2}
     "#
     : "={x0}" (ret)
@@ -302,11 +291,6 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
       "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23",
       "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31",
       "cc", "memory"
-      // Ideally, we would set the LLVM "noredzone" attribute on this function
-      // (and it would be propagated to the call site). Unfortunately, rustc
-      // provides no such functionality. Fortunately, by a lucky coincidence,
-      // the "alignstack" LLVM inline assembly option does exactly the same
-      // thing on AArch64.
     : "volatile", "alignstack");
   (ret, mem::transmute(ret_sp))
 }
