@@ -19,7 +19,7 @@ use stack;
 use debug;
 use arch::{self, StackPointer};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum State {
   /// Generator can be resumed. This is the initial state.
   Runnable,
