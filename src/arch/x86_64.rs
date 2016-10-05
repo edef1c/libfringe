@@ -47,14 +47,12 @@
 //   address from the stack frame at %rbp (in the parent stack), thus continuing
 //   unwinding at the swap call site instead of falling off the end of context stack.
 use core::mem;
-use stack::Stack;
+use stack;
+use arch::StackPointer;
 
 pub const STACK_ALIGNMENT: usize = 16;
 
-#[derive(Debug, Clone, Copy)]
-pub struct StackPointer(*mut usize);
-
-pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
+pub unsafe fn init<Stack: stack::Stack>(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer)) -> StackPointer {
   #[cfg(not(target_vendor = "apple"))]
   #[naked]
   unsafe extern "C" fn trampoline_1() {
@@ -130,14 +128,29 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
         nop
 
         # Call the provided function.
-        call    *16(%rsp)
+        callq   *16(%rsp)
+
+        # Clear the stack pointer. We can't call into this context any more once
+        # the function has returned.
+        xorq    %rsi, %rsi
+
+        # Restore the stack pointer of the parent context. No CFI adjustments
+        # are needed since we have the same stack frame as trampoline_1.
+        movq    (%rsp), %rsp
+
+        # Restore frame pointer of the parent context.
+        popq    %rbp
+        .cfi_adjust_cfa_offset -8
+        .cfi_restore %rbp
+
+        # Return into the parent context. Use `pop` and `jmp` instead of a `ret`
+        # to avoid return address mispredictions (~8ns per `ret` on Ivy Bridge).
+        popq    %rax
+        .cfi_adjust_cfa_offset -8
+        .cfi_register %rip, %rax
+        jmpq    *%rax
       "#
       : : : : "volatile")
-  }
-
-  unsafe fn push(sp: &mut StackPointer, val: usize) {
-    sp.0 = sp.0.offset(-1);
-    *sp.0 = val
   }
 
   // We set up the stack in a somewhat special way so that to the unwinder it
@@ -148,36 +161,30 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
   // followed by the %rbp value for that frame. This setup supports unwinding
   // using DWARF CFI as well as the frame pointer-based unwinding used by tools
   // such as perf or dtrace.
-  let mut sp = StackPointer(stack.base() as *mut usize);
+  let mut sp = StackPointer::stack_base(stack);
 
-  push(&mut sp, 0 as usize); // Padding to ensure the stack is properly aligned
-  push(&mut sp, f as usize); // Function that trampoline_2 should call
+  sp.push(0 as usize); // Padding to ensure the stack is properly aligned
+  sp.push(f as usize); // Function that trampoline_2 should call
 
   // Call frame for trampoline_2. The CFA slot is updated by swap::trampoline
   // each time a context switch is performed.
-  push(&mut sp, trampoline_1 as usize + 2); // Return after the 2 nops
-  push(&mut sp, 0xdeaddeaddead0cfa);        // CFA slot
+  sp.push(trampoline_1 as usize + 2); // Return after the 2 nops
+  sp.push(0xdeaddeaddead0cfa);        // CFA slot
 
   // Call frame for swap::trampoline. We set up the %rbp value to point to the
   // parent call frame.
-  let frame = sp;
-  push(&mut sp, trampoline_2 as usize + 1); // Entry point, skip initial nop
-  push(&mut sp, frame.0 as usize);          // Pointer to parent call frame
+  let frame = sp.offset(0);
+  sp.push(trampoline_2 as usize + 1); // Entry point, skip initial nop
+  sp.push(frame as usize);            // Pointer to parent call frame
 
   sp
 }
 
 #[inline(always)]
-pub unsafe fn swap(arg: usize, new_sp: StackPointer,
-                   new_stack: Option<&Stack>) -> (usize, StackPointer) {
+pub unsafe fn swap_link<Stack: stack::Stack>(arg: usize, new_sp: StackPointer,
+                                             new_stack: &Stack) -> (usize, Option<StackPointer>) {
   // Address of the topmost CFA stack slot.
-  let mut dummy: usize = mem::uninitialized();
-  let new_cfa = if let Some(new_stack) = new_stack {
-    (new_stack.base() as *mut usize).offset(-4)
-  } else {
-    // Just pass a dummy pointer if we aren't linking the stack
-    &mut dummy
-  };
+  let new_cfa = StackPointer::stack_base(new_stack).offset(-4);
 
   #[naked]
   unsafe extern "C" fn trampoline() {
@@ -215,7 +222,7 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
   }
 
   let ret: usize;
-  let ret_sp: *mut usize;
+  let ret_sp: usize;
   asm!(
     r#"
       # Push instruction pointer of the old context and switch to
@@ -242,5 +249,51 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
       // the "alignstack" LLVM inline assembly option does exactly the same
       // thing on x86_64.
     : "volatile", "alignstack");
-  (ret, StackPointer(ret_sp))
+  (ret, mem::transmute(ret_sp))
+}
+
+#[inline(always)]
+pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
+  // This is identical to swap_link, but without the write to the CFA slot.
+  #[naked]
+  unsafe extern "C" fn trampoline() {
+    asm!(
+      r#"
+        pushq   %rbp
+        .cfi_adjust_cfa_offset 8
+        .cfi_rel_offset %rbp, 0
+        movq    %rsp, %rsi
+        movq    %rdx, %rsp
+        popq    %rbp
+        .cfi_adjust_cfa_offset -8
+        .cfi_restore %rbp
+        popq    %rax
+        .cfi_adjust_cfa_offset -8
+        .cfi_register %rip, %rax
+        jmpq    *%rax
+      "#
+      : : : : "volatile")
+  }
+
+  let ret: usize;
+  let ret_sp: usize;
+  asm!(
+    r#"
+      call    ${2:c}
+    "#
+    : "={rdi}" (ret)
+      "={rsi}" (ret_sp)
+    : "s" (trampoline as usize)
+      "{rdi}" (arg)
+      "{rdx}" (new_sp.0)
+    : "rax",   "rbx",   "rcx",   "rdx", /*"rsi",   "rdi",   "rbp",   "rsp",*/
+      "r8",    "r9",    "r10",   "r11",   "r12",   "r13",   "r14",   "r15",
+      "mm0",   "mm1",   "mm2",   "mm3",   "mm4",   "mm5",   "mm6",   "mm7",
+      "xmm0",  "xmm1",  "xmm2",  "xmm3",  "xmm4",  "xmm5",  "xmm6",  "xmm7",
+      "xmm8",  "xmm9",  "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15",
+      "xmm16", "xmm17", "xmm18", "xmm19", "xmm20", "xmm21", "xmm22", "xmm23",
+      "xmm24", "xmm25", "xmm26", "xmm27", "xmm28", "xmm29", "xmm30", "xmm31",
+      "cc", "dirflag", "fpsr", "flags", "memory"
+    : "volatile", "alignstack");
+  (ret, mem::transmute(ret_sp))
 }
