@@ -177,52 +177,40 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
     &mut dummy
   };
 
-  #[naked]
-  unsafe extern "C" fn trampoline() {
-    asm!(
-      r#"
+  let ret: usize;
+  let ret_sp: *mut usize;
+  asm!(
+    r#"
+        # Set up the link register
+        adr     lr, 0f
+
         # Save the frame pointer and link register; the unwinder uses them to find
         # the CFA of the caller, and so they have to have the correct value immediately
         # after the call instruction that invoked the trampoline.
         stp     x29, x30, [sp, #-16]!
-        .cfi_adjust_cfa_offset 16
-        .cfi_rel_offset x30, 8
-        .cfi_rel_offset x29, 0
-
-        # Link the call stacks together by writing the current stack bottom
-        # address to the CFA slot in the new stack.
-        mov     x4, sp
-        str     x4, [x3]
 
         # Pass the stack pointer of the old context to the new one.
         mov     x1, sp
+
+        # Link the call stacks together by writing the current stack bottom
+        # address to the CFA slot in the new stack.
+        str     x1, [x3]
+
         # Load stack pointer of the new context.
         mov     sp, x2
 
         # Load frame and instruction pointers of the new context.
         ldp     x29, x30, [sp], #16
-        .cfi_adjust_cfa_offset -16
-        .cfi_restore x29
-        .cfi_restore x30
 
         # Return into the new context. Use `br` instead of a `ret` to avoid
         # return address mispredictions.
         br      x30
-      "#
-      : : : : "volatile")
-  }
 
-  let ret: usize;
-  let ret_sp: *mut usize;
-  asm!(
-    r#"
-      # Call the trampoline to switch to the new context.
-      bl      ${2}
+      0:
     "#
     : "={x0}" (ret)
       "={x1}" (ret_sp)
-    : "s" (trampoline as usize)
-      "{x0}" (arg)
+    : "{x0}" (arg)
       "{x2}" (new_sp.0)
       "{x3}" (new_cfa)
     :/*x0,   "x1",*/"x2",  "x3",  "x4",  "x5",  "x6",  "x7",

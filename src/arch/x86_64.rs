@@ -179,16 +179,18 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
     &mut dummy
   };
 
-  #[naked]
-  unsafe extern "C" fn trampoline() {
-    asm!(
-      r#"
+  let ret: usize;
+  let ret_sp: *mut usize;
+  asm!(
+    r#"
+        # Push the return address
+        leaq    0f(%rip), %rax
+        pushq   %rax
+
         # Save frame pointer explicitly; the unwinder uses it to find CFA of
         # the caller, and so it has to have the correct value immediately after
         # the call instruction that invoked the trampoline.
         pushq   %rbp
-        .cfi_adjust_cfa_offset 8
-        .cfi_rel_offset %rbp, 0
 
         # Link the call stacks together by writing the current stack bottom
         # address to the CFA slot in the new stack.
@@ -196,36 +198,23 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
 
         # Pass the stack pointer of the old context to the new one.
         movq    %rsp, %rsi
+
         # Load stack pointer of the new context.
         movq    %rdx, %rsp
 
         # Restore frame pointer of the new context.
         popq    %rbp
-        .cfi_adjust_cfa_offset -8
-        .cfi_restore %rbp
 
         # Return into the new context. Use `pop` and `jmp` instead of a `ret`
         # to avoid return address mispredictions (~8ns per `ret` on Ivy Bridge).
         popq    %rax
-        .cfi_adjust_cfa_offset -8
-        .cfi_register %rip, %rax
         jmpq    *%rax
-      "#
-      : : : : "volatile")
-  }
 
-  let ret: usize;
-  let ret_sp: *mut usize;
-  asm!(
-    r#"
-      # Push instruction pointer of the old context and switch to
-      # the new context.
-      call    ${2:c}
+      0:
     "#
     : "={rdi}" (ret)
       "={rsi}" (ret_sp)
-    : "s" (trampoline as usize)
-      "{rdi}" (arg)
+    : "{rdi}" (arg)
       "{rdx}" (new_sp.0)
       "{rcx}" (new_cfa)
     : "rax",   "rbx",   "rcx",   "rdx", /*"rsi",   "rdi",   "rbp",   "rsp",*/
