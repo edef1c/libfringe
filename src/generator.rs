@@ -194,7 +194,7 @@ pub struct Yielder<Input, Output> {
 }
 
 impl<Input, Output> Yielder<Input, Output> {
-  fn new(stack_ptr: StackPointer) -> Yielder<Input, Output> {
+  pub fn new(stack_ptr: StackPointer) -> Yielder<Input, Output> {
     Yielder {
       stack_ptr: Cell::new(stack_ptr),
       phantom: PhantomData
