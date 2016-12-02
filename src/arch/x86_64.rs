@@ -167,7 +167,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
   sp
 }
 
-#[inline(always)]
+//#[inline(always)]
 pub unsafe fn swap(arg: usize, new_sp: StackPointer,
                    new_stack: Option<&Stack>) -> (usize, StackPointer) {
   // Address of the topmost CFA stack slot.
