@@ -195,7 +195,7 @@ You might ask, "but what about [mioco][]?" The mioco library uses the [context][
 implement context switches, which is little more than a wrapper of [boost::context][boostcontext].
 The boost::context library changes undocumented fields in the [TIB][] during every context switch
 to try and work around the restrictions placed by the Windows platform ABI. This has
-[failed before][tibfail] and it is bound fail again, breaking existing code that uses
+[failed before][tibfail] and it is bound to fail again, breaking existing code that uses
 boost::context in unexpected and complicated ways. The authors of libfringe consider this
 unacceptable.
 
