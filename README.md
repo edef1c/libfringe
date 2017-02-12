@@ -134,12 +134,12 @@ Add this to your `Cargo.toml`:
 version = "1.2.1"
 ```
 
-To use libfringe on a bare-metal target, add the `no-default-features` key:
+To use libfringe on a bare-metal target, add the `default-features` key:
 
 ```toml
 [dependencies.fringe]
 version = "1.2.1"
-no-default-features = true
+default-features = false
 ```
 
 ### Feature flags
