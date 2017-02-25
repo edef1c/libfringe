@@ -8,6 +8,7 @@ extern crate fringe;
 
 use fringe::OsStack;
 use fringe::generator::Generator;
+use std::mem;
 
 #[test]
 fn producer() {
@@ -18,4 +19,5 @@ fn producer() {
   assert_eq!(gen.next(), Some(0));
   assert_eq!(gen.next(), Some(1));
   assert_eq!(gen.next(), Some(2));
+  mem::forget(gen);
 }

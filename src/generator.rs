@@ -70,6 +70,7 @@ pub enum State {
 ///
 /// ```
 /// use fringe::{OsStack, Generator};
+/// use std::mem;
 ///
 /// let stack = OsStack::new(0).unwrap();
 /// let mut nat = Generator::new(stack, move |yielder, ()| {
@@ -78,6 +79,7 @@ pub enum State {
 /// println!("{:?}", nat.next()); // prints Some(0)
 /// println!("{:?}", nat.next()); // prints Some(1)
 /// println!("{:?}", nat.next()); // prints Some(2)
+/// mem::forget(nat); // we can't drop a running Generator, so we leak it
 /// ```
 #[derive(Debug)]
 pub struct Generator<'a, Input: 'a, Output: 'a, Stack: stack::Stack> {
@@ -213,7 +215,7 @@ impl<'a, Input, Output, Stack> Drop for Generator<'a, Input, Output, Stack>
     unsafe {
       ptr::drop_in_place(&mut self.stack_id.value);
       match self.state {
-        State::Runnable    => {} // leak the stack
+        State::Runnable    => panic!("dropped unfinished Generator"),
         State::Unavailable => ptr::drop_in_place(&mut self.stack.value)
       }
     }

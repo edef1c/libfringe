@@ -73,6 +73,7 @@ fn with_slice_stack() {
   let mut add_one = unsafe { Generator::unsafe_new(stack, add_one_fn) };
   assert_eq!(add_one.resume(1), Some(2));
   assert_eq!(add_one.resume(2), Some(3));
+  assert_eq!(add_one.resume(0), None);
 }
 
 #[test]
@@ -81,6 +82,7 @@ fn with_owned_stack() {
   let mut add_one = unsafe { Generator::unsafe_new(stack, add_one_fn) };
   assert_eq!(add_one.resume(1), Some(2));
   assert_eq!(add_one.resume(2), Some(3));
+  assert_eq!(add_one.resume(0), None);
 }
 
 #[test]
