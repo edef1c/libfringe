@@ -108,3 +108,31 @@ fn forget_yielded() {
   generator.resume(());
   generator.resume(());
 }
+
+#[test]
+fn unwrap_returned() {
+  let stack = OsStack::new(0).unwrap();
+  let mut generator = Generator::new(stack, |_, ()| {});
+  assert_eq!(generator.resume(()), None::<()>);
+  generator.unwrap();
+}
+
+#[test]
+fn unwrap_panicked() {
+  use std::panic;
+  let stack = OsStack::new(4 << 20).unwrap();
+  let mut generator: Generator<(), (), OsStack> = Generator::new(stack, |_, ()| panic!("unwind"));
+  {
+    let closure = panic::AssertUnwindSafe(|| generator.resume(()));
+    assert!(panic::catch_unwind(closure).is_err());
+  }
+  generator.unwrap();
+}
+
+#[test]
+#[should_panic(expected = "Argh! Bastard! Don't touch that!")]
+fn unwrap_running() {
+  let mut add_one = new_add_one();
+  assert_eq!(add_one.resume(1), Some(2));
+  add_one.unwrap();
+}
