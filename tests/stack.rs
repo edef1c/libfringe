@@ -48,7 +48,7 @@ fn slice_too_small() {
 }
 
 #[test]
-#[should_panic="SliceStack too small"]
+#[should_panic(expected = "SliceStack too small")]
 fn slice_too_small_unaligned() {
   unsafe {
     let ptr = heap::allocate(STACK_ALIGNMENT, STACK_ALIGNMENT);

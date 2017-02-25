@@ -81,7 +81,7 @@ mod tests {
   }
 
   #[test]
-  #[should_panic="arg=0"]
+  #[should_panic(expected = "arg=0")]
   fn panic_after_start() {
     unsafe {
       let stack = OsStack::new(4 << 20).unwrap();
@@ -92,7 +92,7 @@ mod tests {
   }
 
   #[test]
-  #[should_panic="arg=1"]
+  #[should_panic(expected = "arg=1")]
   fn panic_after_swap() {
     unsafe {
       let stack = OsStack::new(4 << 20).unwrap();
