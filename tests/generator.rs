@@ -85,23 +85,22 @@ fn with_owned_stack() {
 
 #[test]
 fn forget_yielded() {
-  struct Dropper(*mut bool);
+  use std::cell::Cell;
+  struct Dropper<'a>(&'a Cell<bool>);
 
-  impl Drop for Dropper {
+  impl<'a> Drop for Dropper<'a> {
     fn drop(&mut self) {
-      unsafe {
-        if *self.0 {
-          panic!("double drop!")
-        }
-        *self.0 = true;
+      if self.0.get() {
+        panic!("double drop!")
       }
+      self.0.set(true);
     }
   }
 
   let stack = fringe::OsStack::new(1<<16).unwrap();
+  let flag = Cell::new(false);
   let mut generator = Generator::new(stack, |yielder, ()| {
-    let mut flag = false;
-    yielder.suspend(Dropper(&mut flag as *mut bool));
+    yielder.suspend(Dropper(&flag));
   });
   generator.resume(());
   generator.resume(());
