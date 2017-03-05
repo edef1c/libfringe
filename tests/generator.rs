@@ -87,8 +87,6 @@ fn with_owned_stack() {
 fn forget_yielded() {
   struct Dropper(*mut bool);
 
-  unsafe impl Send for Dropper {}
-
   impl Drop for Dropper {
     fn drop(&mut self) {
       unsafe {

@@ -88,9 +88,6 @@ pub struct Generator<'a, Input: 'a, Output: 'a, Stack: stack::Stack> {
   phantom:   PhantomData<(&'a (), *mut Input, *const Output)>
 }
 
-unsafe impl<'a, Input, Output, Stack> Send for Generator<'a, Input, Output, Stack>
-  where Input: Send + 'a, Output: Send + 'a, Stack: stack::Stack + Send {}
-
 impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
     where Input: 'a, Output: 'a, Stack: stack::Stack {
   /// Creates a new generator.
@@ -98,7 +95,7 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
   pub fn new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
       where Stack: stack::GuardedStack,
-            F: FnOnce(&Yielder<Input, Output>, Input) + Send + 'a {
+            F: FnOnce(&Yielder<Input, Output>, Input) + 'a {
     unsafe { Generator::unsafe_new(stack, f) }
   }
 
@@ -110,7 +107,7 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   ///
   /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
   pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
-      where F: FnOnce(&Yielder<Input, Output>, Input) + Send + 'a {
+      where F: FnOnce(&Yielder<Input, Output>, Input) + 'a {
     unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer) -> !
         where Stack: stack::Stack, F: FnOnce(&Yielder<Input, Output>, Input) {
       // Retrieve our environment from the callee and return control to it.
