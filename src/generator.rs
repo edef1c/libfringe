@@ -111,7 +111,7 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   ///
   /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
   pub fn new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
-      where Stack: stack::GuardedStack,
+      where Stack: stack::GuardedStack + 'static,
             F: FnOnce(&Yielder<Input, Output>, Input) + 'a {
     unsafe { Generator::unsafe_new(stack, f) }
   }
