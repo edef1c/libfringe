@@ -201,7 +201,9 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
     }
   }
 
-  unsafe fn unsafe_unwrap(mut self) -> Stack {
+  /// Extracts the stack from a generator without checking if the generator function has returned.
+  /// This will leave any pointers into the generator stack dangling, and won't run destructors.
+  pub unsafe fn unsafe_unwrap(mut self) -> Stack {
     ptr::drop_in_place(&mut self.stack_id.value);
     let stack = ptr::read(&mut self.stack.value);
     mem::forget(self);
