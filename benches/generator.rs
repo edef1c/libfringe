@@ -8,7 +8,6 @@
 extern crate test;
 extern crate fringe;
 
-use std::mem;
 use fringe::{OsStack, Generator};
 
 #[bench]
@@ -19,5 +18,5 @@ fn generate(b: &mut test::Bencher) {
   });
 
   b.iter(|| for _ in 0..10 { test::black_box(identity.resume(test::black_box(0))); });
-  mem::forget(identity);
+  unsafe { identity.unsafe_unwrap(); }
 }
