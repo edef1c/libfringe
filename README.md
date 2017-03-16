@@ -84,30 +84,29 @@ fn main() {
 }
 ```
 
-It crashes with the following backtrace (redacted for clarity):
+It crashes with the following backtrace:
 
 ```
-thread 'main' panicked at 'assertion failed: index < self.len()', ../src/libcore/slice.rs:531
+thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 5', /checkout/src/libcore/slice.rs:658
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
 stack backtrace:
-   [... core::panicking internals ...]
-   9:     0x559ee50f677b - core::panicking::panic::hbfac80217e56ecbe
-  10:     0x559ee50b6b4c - core::slice::_<impl core..ops..Index<usize> for [T]>::index::hcb117ddcc7cf2f33
-                        at .../src/libcore/slice.rs:21
-  11:     0x559ee50b7288 - crash_test::main::_{{closure}}::hc7da249d76d51364
-                        at .../crash_test.rs:9
-  12:     0x559ee50b6f23 - _<fringe..generator..Generator<Input, Output, Stack>>::unsafe_new::generator_wrapper::ha2da172d4f041d38
-                        at .../libfringe/src/generator.rs:94
-  13:     0x559ee50b76d3 - fringe::arch::imp::init::trampoline_2::hdb11eb4bdafcdeb9
-                        at .../libfringe/src/arch/x86_64.rs:71
-  14:     0x559ee50b76c4 - fringe::arch::imp::init::trampoline_1::h6b071b2a8ea6aab3
-                        at .../libfringe/src/arch/x86_64.rs:43
-  15:     0x559ee50b7098 - _<fringe..generator..Generator<Input, Output, Stack>>::resume::h8d2b90d386543e29
-                        at .../libfringe/src/arch/x86_64.rs:131
-                        at .../libfringe/src/context.rs:52
-                        at .../libfringe/src/generator.rs:129
-  16:     0x559ee50b71c8 - crash_test::main::hfc5e04bc99de7a6a
-                        at .../crash_test.rs:12
-  [... standard library startup internals ...]
+   0: <usize as core::slice::SliceIndex<T>>::index
+             at /checkout/src/libcore/slice.rs:658
+   1: core::slice::<impl core::ops::Index<I> for [T]>::index
+             at /checkout/src/libcore/slice.rs:560
+   2: crash_test::main::{{closure}}
+             at ./src/main.rs:9
+   3: <fringe::generator::Generator<'a, Input, Output, Stack>>::unsafe_new::generator_wrapper
+             at /home/edef/src/github.com/edef1c/libfringe/src/generator.rs:137
+   4: fringe::arch::imp::init::trampoline_2
+             at /home/edef/src/github.com/edef1c/libfringe/src/arch/x86_64.rs:116
+   5: fringe::arch::imp::init::trampoline_1
+             at /home/edef/src/github.com/edef1c/libfringe/src/arch/x86_64.rs:61
+   6: <fringe::generator::Generator<'a, Input, Output, Stack>>::resume
+             at /home/edef/src/github.com/edef1c/libfringe/src/arch/x86_64.rs:184
+             at /home/edef/src/github.com/edef1c/libfringe/src/generator.rs:171
+   7: crash_test::main
+             at ./src/main.rs:12
 ```
 
 Similarly, debuggers, profilers, and all other tools using the DWARF debug information have
