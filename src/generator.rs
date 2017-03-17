@@ -92,7 +92,7 @@ pub struct Generator<'a, Input: 'a, Output: 'a, Stack: stack::Stack> {
 
 #[allow(unions_with_drop_fields)]
 union NoDrop<T> {
-  value: T,
+  inner: T
   _empty: ()
 }
 
@@ -100,7 +100,7 @@ impl<T: ::core::fmt::Debug> ::core::fmt::Debug for NoDrop<T> {
   fn fmt(&self, w: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
     unsafe {
       // this is safe because we never invoke formatting on the empty variant
-      self.value.fmt(w)
+      self.inner.fmt(w)
     }
   }
 }
@@ -148,8 +148,8 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
 
     Generator {
       state:     State::Runnable,
-      stack:     NoDrop { value: stack },
-      stack_id:  NoDrop { value: stack_id },
+      stack:     NoDrop { inner: stack },
+      stack_id:  NoDrop { inner: stack_id },
       stack_ptr: stack_ptr,
       phantom:   PhantomData
     }
@@ -168,7 +168,7 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
 
         // Switch to the generator function, and retrieve the yielded value.
         let val = unsafe {
-          let (data_out, stack_ptr) = arch::swap(&input as *const Input as usize, self.stack_ptr, Some(&self.stack.value));
+          let (data_out, stack_ptr) = arch::swap(&input as *const Input as usize, self.stack_ptr, Some(&self.stack.inner));
           self.stack_ptr = stack_ptr;
           mem::forget(input);
           ptr::read(data_out as *const Option<Output>)
@@ -204,8 +204,8 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// Extracts the stack from a generator without checking if the generator function has returned.
   /// This will leave any pointers into the generator stack dangling, and won't run destructors.
   pub unsafe fn unsafe_unwrap(mut self) -> Stack {
-    ptr::drop_in_place(&mut self.stack_id.value);
-    let stack = ptr::read(&mut self.stack.value);
+    ptr::drop_in_place(&mut self.stack_id.inner);
+    let stack = ptr::read(&mut self.stack.inner);
     mem::forget(self);
     stack
   }
@@ -215,10 +215,10 @@ impl<'a, Input, Output, Stack> Drop for Generator<'a, Input, Output, Stack>
     where Input: 'a, Output: 'a, Stack: stack::Stack {
   fn drop(&mut self) {
     unsafe {
-      ptr::drop_in_place(&mut self.stack_id.value);
+      ptr::drop_in_place(&mut self.stack_id.inner);
       match self.state {
         State::Runnable    => panic!("dropped unfinished Generator"),
-        State::Unavailable => ptr::drop_in_place(&mut self.stack.value)
+        State::Unavailable => ptr::drop_in_place(&mut self.stack.inner)
       }
     }
   }
