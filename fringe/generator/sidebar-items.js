@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["State",""]],"struct":[["Generator","Generator wraps a function and allows suspending its execution more than once, returning a value each time."],["Yielder","Yielder is an interface provided to every generator through which it returns a value."]]});
