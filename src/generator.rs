@@ -93,7 +93,6 @@ pub struct Generator<'a, Input: 'a, Output: 'a, Stack: stack::Stack> {
 #[allow(unions_with_drop_fields)]
 union NoDrop<T> {
   inner: T
-  _empty: ()
 }
 
 impl<T: ::core::fmt::Debug> ::core::fmt::Debug for NoDrop<T> {
