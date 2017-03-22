@@ -44,6 +44,11 @@ pub const STACK_ALIGNMENT: usize = arch::STACK_ALIGNMENT;
 
 mod debug;
 
+#[cfg(feature = "unwind")]
+#[path = "unwind.rs"]
+mod unwind;
+#[cfg(not(feature = "unwind"))]
+#[path = "no_unwind.rs"]
 mod unwind;
 
 pub mod generator;

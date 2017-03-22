@@ -218,7 +218,9 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// Extracts the stack from a generator without checking if the generator function has returned.
   /// This will leave any pointers into the generator stack dangling, and won't run destructors.
   pub unsafe fn unsafe_unwrap(mut self) -> Stack {
-    self.stack_ptr.map(|stack_ptr| arch::unwind(stack_ptr, self.stack.inner.base()));
+    if cfg!(feature = "unwind") {
+      self.stack_ptr.map(|stack_ptr| arch::unwind(stack_ptr, self.stack.inner.base()));
+    }
 
     // We can't just return self.stack since Generator has a Drop impl
     let stack = ptr::read(&self.stack.inner);
@@ -232,8 +234,11 @@ impl<'a, Input, Output, Stack> Drop for Generator<'a, Input, Output, Stack>
     where Input: 'a, Output: 'a, Stack: stack::Stack {
   fn drop(&mut self) {
     unsafe {
-      self.stack_ptr.map(|stack_ptr| arch::unwind(stack_ptr, self.stack.inner.base()));
-      ptr::drop_in_place(&mut self.stack.inner);
+      // If unwinding is not available then we have to leak the stack.
+      if cfg!(feature = "unwind") {
+        self.stack_ptr.map(|stack_ptr| arch::unwind(stack_ptr, self.stack.inner.base()));
+        ptr::drop_in_place(&mut self.stack.inner);
+      }
     }
   }
 }

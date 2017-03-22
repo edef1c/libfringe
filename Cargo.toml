@@ -19,9 +19,10 @@ version = "1.0.0"
 simd = "0.1"
 
 [features]
-default = ["alloc", "valgrind"]
+default = ["alloc", "valgrind", "unwind"]
 alloc = []
 valgrind = ["valgrind_request"]
+unwind = []
 
 # These apply only to tests within this library; assembly at -O0 is completely
 # unreadable, so use -O1.
