@@ -145,7 +145,7 @@ pub unsafe fn init(stack_base: *mut u8, f: unsafe fn(usize, StackPointer)) -> St
         # context with the given exception object.
         movq    %rax, %rdi
         testq   %rax, %rax
-        jnz     ${1:c}@plt
+        jnz     ${1:c}
 
         # Clear the stack pointer. We can't call into this context any more once
         # the function has returned.
@@ -301,7 +301,7 @@ pub unsafe fn unwind(new_sp: StackPointer, new_stack_base: *mut u8) {
         # Jump to the start_unwind function, which will force a stack unwind in
         # the target context. This will eventually return to us through the
         # stack link.
-        jmp     ${0:c}@plt
+        jmp     ${0:c}
       0:
     "#
     :
