@@ -256,7 +256,7 @@ pub unsafe fn swap_link(arg: usize, new_sp: StackPointer,
       "={esi}" (ret_sp)
     : "s" (trampoline as usize)
       "{edi}" (arg)
-      "{edx}" (new_sp.0)
+      "{edx}" (*new_sp.0)
       "{ecx}" (new_stack_base)
     : "eax",  "ebx",  "ecx",  "edx",/*"esi",  "edi",  "ebp",  "esp",*/
       "mm0",  "mm1",  "mm2",  "mm3",  "mm4",  "mm5",  "mm6",  "mm7",
@@ -299,7 +299,7 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
       "={esi}" (ret_sp)
     : "s" (trampoline as usize)
       "{edi}" (arg)
-      "{edx}" (new_sp.0)
+      "{edx}" (*new_sp.0)
     : "eax",  "ebx",  "ecx",  "edx",/*"esi",  "edi",  "ebp",  "esp",*/
       "mm0",  "mm1",  "mm2",  "mm3",  "mm4",  "mm5",  "mm6",  "mm7",
       "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7",
@@ -348,7 +348,7 @@ pub unsafe fn unwind(new_sp: StackPointer, new_stack_base: *mut u8) {
     :
     : "s" (trampoline as usize)
       "{edi}" (arg)
-      "{edx}" (new_sp.0)
+      "{edx}" (*new_sp.0)
       "{ecx}" (new_stack_base)
     : "eax",  "ebx",  "ecx",  "edx",  "esi",  "edi",/*"ebp",  "esp",*/
       "mm0",  "mm1",  "mm2",  "mm3",  "mm4",  "mm5",  "mm6",  "mm7",
