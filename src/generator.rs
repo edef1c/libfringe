@@ -234,10 +234,15 @@ impl<'a, Input, Output, Stack> Drop for Generator<'a, Input, Output, Stack>
     where Input: 'a, Output: 'a, Stack: stack::Stack {
   fn drop(&mut self) {
     unsafe {
-      // If unwinding is not available then we have to leak the stack.
-      if cfg!(feature = "unwind") {
-        self.stack_ptr.map(|stack_ptr| arch::unwind(stack_ptr, self.stack.inner.base()));
-        ptr::drop_in_place(&mut self.stack.inner);
+      match self.stack_ptr {
+        Some(stack_ptr) => {
+          // If unwinding is not available then we have to leak the stack.
+          if cfg!(feature = "unwind") {
+            arch::unwind(stack_ptr, self.stack.inner.base());
+            ptr::drop_in_place(&mut self.stack.inner);
+          }
+        }
+        None => ptr::drop_in_place(&mut self.stack.inner)
       }
     }
   }
