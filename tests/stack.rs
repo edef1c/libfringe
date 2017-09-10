@@ -4,20 +4,25 @@
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
-#![feature(alloc, heap_api)]
+#![feature(alloc, heap_api, allocator_api)]
 
 extern crate alloc;
 extern crate fringe;
 
-use alloc::heap;
+use alloc::heap::Heap;
+use alloc::allocator::{Alloc, Layout};
 use alloc::boxed::Box;
 use std::slice;
 use fringe::{STACK_ALIGNMENT, Stack, SliceStack, OwnedStack, OsStack};
 
+unsafe fn heap_allocate(size: usize, align: usize) -> *mut u8 {
+  Heap.alloc(Layout::from_size_align_unchecked(size, align)).expect("couldn't allocate")
+}
+
 #[test]
 fn slice_aligned() {
   unsafe {
-    let ptr = heap::allocate(16384, STACK_ALIGNMENT);
+    let ptr = heap_allocate(16384, STACK_ALIGNMENT);
     let mut slice = Box::from_raw(slice::from_raw_parts_mut(ptr, 16384));
     let stack = SliceStack::new(&mut slice[4096..8192]);
     assert_eq!(stack.base() as usize & (STACK_ALIGNMENT - 1), 0);
@@ -28,7 +33,7 @@ fn slice_aligned() {
 #[test]
 fn slice_unaligned() {
   unsafe {
-    let ptr = heap::allocate(16384, STACK_ALIGNMENT);
+    let ptr = heap_allocate(16384, STACK_ALIGNMENT);
     let mut slice = Box::from_raw(slice::from_raw_parts_mut(ptr, 16384));
     let stack = SliceStack::new(&mut slice[4097..8193]);
     assert_eq!(stack.base() as usize & (STACK_ALIGNMENT - 1), 0);
@@ -39,7 +44,7 @@ fn slice_unaligned() {
 #[test]
 fn slice_too_small() {
   unsafe {
-    let ptr = heap::allocate(STACK_ALIGNMENT, STACK_ALIGNMENT);
+    let ptr = heap_allocate(STACK_ALIGNMENT, STACK_ALIGNMENT);
     let mut slice = Box::from_raw(slice::from_raw_parts_mut(ptr, STACK_ALIGNMENT));
     let stack = SliceStack::new(&mut slice[0..1]);
     assert_eq!(stack.base() as usize & (STACK_ALIGNMENT - 1), 0);
@@ -51,7 +56,7 @@ fn slice_too_small() {
 #[should_panic(expected = "SliceStack too small")]
 fn slice_too_small_unaligned() {
   unsafe {
-    let ptr = heap::allocate(STACK_ALIGNMENT, STACK_ALIGNMENT);
+    let ptr = heap_allocate(STACK_ALIGNMENT, STACK_ALIGNMENT);
     let mut slice = Box::from_raw(slice::from_raw_parts_mut(ptr, STACK_ALIGNMENT));
     SliceStack::new(&mut slice[1..2]);
   }
