@@ -15,6 +15,10 @@ use alloc::boxed::Box;
 use std::slice;
 use fringe::{OsStack, OwnedStack, SliceStack, Stack, STACK_ALIGNMENT};
 
+unsafe fn heap_allocate(size: usize, align: usize) -> *mut u8 {
+  Heap.alloc(Layout::from_size_align_unchecked(size, align)).expect("couldn't allocate")
+}
+
 #[test]
 fn slice_aligned() {
     unsafe {

@@ -6,6 +6,7 @@
 // copied, modified, or distributed except according to those terms.
 #![feature(asm, naked_functions, cfg_target_vendor, untagged_unions)]
 #![cfg_attr(feature = "alloc", feature(alloc, allocator_api))]
+
 #![cfg_attr(test, feature(test))]
 #![no_std]
 #![allow(unused_variables, unreachable_code, dead_code, path_statements)]
