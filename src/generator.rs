@@ -12,20 +12,22 @@
 //! afterwards.
 
 use core::marker::PhantomData;
-use core::{ptr, mem};
+use core::{mem, ptr};
 use core::cell::Cell;
 
 use stack;
 use debug;
-use arch::{self, StackPointer};
+use arch;
+use stack_pointer::StackPointer;
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum State {
-  /// Generator can be resumed. This is the initial state.
-  Runnable,
-  /// Generator cannot be resumed. This is the state of the generator after
-  /// the generator function has returned or panicked.
-  Unavailable
+    /// Generator can be resumed. This is the initial state.
+    Runnable,
+    /// Generator cannot be resumed. This is the state of the generator after
+    /// the generator function has returned or panicked.
+    Unavailable,
 }
 
 /// Generator wraps a function and allows suspending its execution more than once, returning
@@ -83,183 +85,220 @@ pub enum State {
 /// ```
 #[derive(Debug)]
 pub struct Generator<'a, Input: 'a, Output: 'a, Stack: stack::Stack> {
-  state:     State,
-  stack:     NoDrop<Stack>,
-  stack_id:  NoDrop<debug::StackId>,
-  stack_ptr: arch::StackPointer,
-  phantom:   PhantomData<(&'a (), *mut Input, *const Output)>
+    state: State,
+    stack: NoDrop<Stack>,
+    stack_id: NoDrop<debug::StackId>,
+    stack_ptr: StackPointer,
+    phantom: PhantomData<(&'a (), *mut Input, *const Output)>,
 }
 
 #[allow(unions_with_drop_fields)]
 union NoDrop<T> {
-  inner: T
+    inner: T,
 }
 
 impl<T: ::core::fmt::Debug> ::core::fmt::Debug for NoDrop<T> {
-  fn fmt(&self, w: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-    unsafe {
-      // this is safe because we never invoke formatting on the empty variant
-      self.inner.fmt(w)
+    fn fmt(&self, w: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        unsafe {
+            // this is safe because we never invoke formatting on the empty variant
+            self.inner.fmt(w)
+        }
     }
-  }
 }
 
 impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
-    where Input: 'a, Output: 'a, Stack: stack::Stack {
-  /// Creates a new generator.
-  ///
-  /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
-  pub fn new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
-      where Stack: stack::GuardedStack + 'static,
-            F: FnOnce(&Yielder<Input, Output>, Input) + 'a {
-    unsafe { Generator::unsafe_new(stack, f) }
-  }
-
-  /// Same as `new`, but does not require `stack` to have a guard page.
-  ///
-  /// This function is unsafe because the generator function can easily violate
-  /// memory safety by overflowing the stack. It is useful in environments where
-  /// guarded stacks do not exist, e.g. in absence of an MMU.
-  ///
-  /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
-  pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
-      where F: FnOnce(&Yielder<Input, Output>, Input) + 'a {
-    unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer) -> !
-        where Stack: stack::Stack, F: FnOnce(&Yielder<Input, Output>, Input) {
-      // Retrieve our environment from the callee and return control to it.
-      let f = ptr::read(env as *const F);
-      let (data, stack_ptr) = arch::swap(0, stack_ptr, None);
-      // See the second half of Yielder::suspend_bare.
-      let input = ptr::read(data as *const Input);
-      // Run the body of the generator.
-      let yielder = Yielder::new(stack_ptr);
-      f(&yielder, input);
-      // Past this point, the generator has dropped everything it has held.
-      loop { yielder.suspend_bare(None); }
+where
+    Input: 'a,
+    Output: 'a,
+    Stack: stack::Stack,
+{
+    /// Creates a new generator.
+    ///
+    /// See also the [contract](../trait.GuardedStack.html) that needs to be fulfilled by `stack`.
+    pub fn new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
+    where
+        Stack: stack::GuardedStack + 'static,
+        F: FnOnce(&Yielder<Input, Output>, Input) + 'a,
+    {
+        unsafe { Generator::unsafe_new(stack, f) }
     }
 
-    let stack_id  = debug::StackId::register(&stack);
-    let stack_ptr = arch::init(&stack, generator_wrapper::<Input, Output, Stack, F>);
+    /// Same as `new`, but does not require `stack` to have a guard page.
+    ///
+    /// This function is unsafe because the generator function can easily violate
+    /// memory safety by overflowing the stack. It is useful in environments where
+    /// guarded stacks do not exist, e.g. in absence of an MMU.
+    ///
+    /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
+    pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
+    where
+        F: FnOnce(&Yielder<Input, Output>, Input) + 'a,
+    {
+        unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(
+            env: usize,
+            stack_ptr: StackPointer,
+        ) -> !
+        where
+            Stack: stack::Stack,
+            F: FnOnce(&Yielder<Input, Output>, Input),
+        {
+            // Retrieve our environment from the callee and return control to it.
+            let f = ptr::read(env as *const F);
+            let (data, stack_ptr) = StackPointer::swap(0, stack_ptr, None);
+            // See the second half of Yielder::suspend_bare.
+            let input = ptr::read(data as *const Input);
+            // Run the body of the generator.
+            let yielder = Yielder::new(stack_ptr);
+            f(&yielder, input);
+            // Past this point, the generator has dropped everything it has held.
+            loop {
+                yielder.suspend_bare(None);
+            }
+        }
 
-    // Transfer environment to the callee.
-    let stack_ptr = arch::swap(&f as *const F as usize, stack_ptr, Some(&stack)).1;
-    mem::forget(f);
+        let stack_id = debug::StackId::register(&stack);
+        let stack_ptr = StackPointer::init(&stack, generator_wrapper::<Input, Output, Stack, F>);
 
-    Generator {
-      state:     State::Runnable,
-      stack:     NoDrop { inner: stack },
-      stack_id:  NoDrop { inner: stack_id },
-      stack_ptr: stack_ptr,
-      phantom:   PhantomData
+        // Transfer environment to the callee.
+        let stack_ptr = arch::swap(&f as *const F as usize, stack_ptr, Some(&stack)).1;
+        mem::forget(f);
+
+        Generator {
+            state: State::Runnable,
+            stack: NoDrop { inner: stack },
+            stack_id: NoDrop { inner: stack_id },
+            stack_ptr: stack_ptr,
+            phantom: PhantomData,
+        }
     }
-  }
 
-  /// Resumes the generator and return the next value it yields.
-  /// If the generator function has returned, returns `None`.
-  #[inline]
-  pub fn resume(&mut self, input: Input) -> Option<Output> {
-    match self.state {
-      State::Runnable => {
-        // Set the state to Unavailable. Since we have exclusive access to the generator,
-        // the only case where this matters is the generator function panics, after which
-        // it must not be invocable again.
-        self.state = State::Unavailable;
+    /// Resumes the generator and return the next value it yields.
+    /// If the generator function has returned, returns `None`.
+    #[inline]
+    pub fn resume(&mut self, input: Input) -> Option<Output> {
+        match self.state {
+            State::Runnable => {
+                // Set the state to Unavailable. Since we have exclusive access to the generator,
+                // the only case where this matters is the generator function panics, after which
+                // it must not be invocable again.
+                self.state = State::Unavailable;
 
-        // Switch to the generator function, and retrieve the yielded value.
-        let val = unsafe {
-          let (data_out, stack_ptr) = arch::swap(&input as *const Input as usize, self.stack_ptr, Some(&self.stack.inner));
-          self.stack_ptr = stack_ptr;
-          mem::forget(input);
-          ptr::read(data_out as *const Option<Output>)
-        };
+                // Switch to the generator function, and retrieve the yielded value.
+                let val = unsafe {
+                    let (data_out, stack_ptr) = arch::swap(
+                        &input as *const Input as usize,
+                        self.stack_ptr,
+                        Some(&self.stack.inner),
+                    );
+                    self.stack_ptr = stack_ptr;
+                    mem::forget(input);
+                    ptr::read(data_out as *const Option<Output>)
+                };
 
-        // Unless the generator function has returned, it can be switched to again, so
-        // set the state to Runnable.
-        if val.is_some() { self.state = State::Runnable }
+                // Unless the generator function has returned, it can be switched to again, so
+                // set the state to Runnable.
+                if val.is_some() {
+                    self.state = State::Runnable
+                }
 
-        val
-      }
-      State::Unavailable => None
+                val
+            }
+            State::Unavailable => None,
+        }
     }
-  }
 
-  /// Returns the state of the generator.
-  #[inline]
-  pub fn state(&self) -> State { self.state }
+    /// Returns the state of the generator.
+    #[inline]
+    pub fn state(&self) -> State {
+        self.state
+    }
 
-  /// Extracts the stack from a generator when the generator function has returned.
-  /// If the generator function has not returned
-  /// (i.e. `self.state() == State::Runnable`), panics.
-  pub fn unwrap(self) -> Stack {
-    match self.state {
-      State::Runnable => {
+    /// Extracts the stack from a generator when the generator function has returned.
+    /// If the generator function has not returned
+    /// (i.e. `self.state() == State::Runnable`), panics.
+    pub fn unwrap(self) -> Stack {
+        match self.state {
+            State::Runnable => {
+                mem::forget(self);
+                panic!("Argh! Bastard! Don't touch that!")
+            }
+            State::Unavailable => unsafe { self.unsafe_unwrap() },
+        }
+    }
+
+    /// Extracts the stack from a generator without checking if the generator function has returned.
+    /// This will leave any pointers into the generator stack dangling, and won't run destructors.
+    pub unsafe fn unsafe_unwrap(mut self) -> Stack {
+        ptr::drop_in_place(&mut self.stack_id.inner);
+        let stack = ptr::read(&mut self.stack.inner);
         mem::forget(self);
-        panic!("Argh! Bastard! Don't touch that!")
-      }
-      State::Unavailable => unsafe { self.unsafe_unwrap() }
+        stack
     }
-  }
-
-  /// Extracts the stack from a generator without checking if the generator function has returned.
-  /// This will leave any pointers into the generator stack dangling, and won't run destructors.
-  pub unsafe fn unsafe_unwrap(mut self) -> Stack {
-    ptr::drop_in_place(&mut self.stack_id.inner);
-    let stack = ptr::read(&mut self.stack.inner);
-    mem::forget(self);
-    stack
-  }
 }
 
 impl<'a, Input, Output, Stack> Drop for Generator<'a, Input, Output, Stack>
-    where Input: 'a, Output: 'a, Stack: stack::Stack {
-  fn drop(&mut self) {
-    unsafe {
-      ptr::drop_in_place(&mut self.stack_id.inner);
-      match self.state {
-        State::Runnable    => panic!("dropped unfinished Generator"),
-        State::Unavailable => ptr::drop_in_place(&mut self.stack.inner)
-      }
+where
+    Input: 'a,
+    Output: 'a,
+    Stack: stack::Stack,
+{
+    fn drop(&mut self) {
+        unsafe {
+            ptr::drop_in_place(&mut self.stack_id.inner);
+            match self.state {
+                State::Runnable => panic!("dropped unfinished Generator"),
+                State::Unavailable => ptr::drop_in_place(&mut self.stack.inner),
+            }
+        }
     }
-  }
 }
 
 /// Yielder is an interface provided to every generator through which it
 /// returns a value.
 #[derive(Debug)]
 pub struct Yielder<Input, Output> {
-  stack_ptr: Cell<StackPointer>,
-  phantom: PhantomData<(*const Input, *mut Output)>
+    stack_ptr: Cell<StackPointer>,
+    phantom: PhantomData<(*const Input, *mut Output)>,
 }
 
 impl<Input, Output> Yielder<Input, Output> {
-  fn new(stack_ptr: StackPointer) -> Yielder<Input, Output> {
-    Yielder {
-      stack_ptr: Cell::new(stack_ptr),
-      phantom: PhantomData
+    fn new(stack_ptr: StackPointer) -> Yielder<Input, Output> {
+        Yielder {
+            stack_ptr: Cell::new(stack_ptr),
+            phantom: PhantomData,
+        }
     }
-  }
 
-  #[inline(always)]
-  fn suspend_bare(&self, val: Option<Output>) -> Input {
-    unsafe {
-      let (data, stack_ptr) = arch::swap(&val as *const Option<Output> as usize, self.stack_ptr.get(), None);
-      self.stack_ptr.set(stack_ptr);
-      mem::forget(val);
-      ptr::read(data as *const Input)
+    #[inline(always)]
+    fn suspend_bare(&self, val: Option<Output>) -> Input {
+        unsafe {
+            let (data, stack_ptr) = arch::swap(
+                &val as *const Option<Output> as usize,
+                self.stack_ptr.get(),
+                None,
+            );
+            self.stack_ptr.set(stack_ptr);
+            mem::forget(val);
+            ptr::read(data as *const Input)
+        }
     }
-  }
 
-  /// Suspends the generator and returns `Some(item)` from the `resume()`
-  /// invocation that resumed the generator.
-  #[inline(always)]
-  pub fn suspend(&self, item: Output) -> Input {
-    self.suspend_bare(Some(item))
-  }
+    /// Suspends the generator and returns `Some(item)` from the `resume()`
+    /// invocation that resumed the generator.
+    #[inline(always)]
+    pub fn suspend(&self, item: Output) -> Input {
+        self.suspend_bare(Some(item))
+    }
 }
 
 impl<'a, Output, Stack> Iterator for Generator<'a, (), Output, Stack>
-    where Output: 'a, Stack: stack::Stack {
-  type Item = Output;
+where
+    Output: 'a,
+    Stack: stack::Stack,
+{
+    type Item = Output;
 
-  fn next(&mut self) -> Option<Self::Item> { self.resume(()) }
+    fn next(&mut self) -> Option<Self::Item> {
+        self.resume(())
+    }
 }

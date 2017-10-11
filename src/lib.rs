@@ -8,7 +8,7 @@
 #![cfg_attr(feature = "alloc", feature(alloc, allocator_api))]
 #![cfg_attr(test, feature(test))]
 #![no_std]
-
+#![allow(unused_variables, unreachable_code, dead_code, path_statements)]
 //! libfringe is a library implementing safe, lightweight context switches,
 //! without relying on kernel services. It can be used in hosted environments
 //! (using `std`) as well as on bare metal (using `core`).
@@ -28,10 +28,17 @@
 //!     [OwnedStack](struct.OwnedStack.html);
 //!   * a stack allocator based on anonymous memory mappings with guard pages,
 //!     [OsStack](struct.OsStack.html).
+#![feature(never_type, const_fn, specialization, slice_patterns, unique, rand)]
 
 #[cfg(test)]
 #[macro_use]
 extern crate std;
+
+
+
+// #[macro_use]
+// extern crate log;
+
 
 pub use stack::*;
 pub use generator::Generator;
@@ -46,3 +53,6 @@ mod debug;
 pub mod generator;
 
 mod stack;
+mod stack_pointer;
+mod session;
+mod fat_args;

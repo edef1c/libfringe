@@ -43,16 +43,14 @@
 //   unwinding at the swap call site instead of falling off the end of context stack.
 use core::mem;
 use stack::Stack;
+use stack_pointer::StackPointer;
 
 pub const STACK_ALIGNMENT: usize = 4;
 
-#[derive(Debug, Clone, Copy)]
-pub struct StackPointer(*mut usize);
-
-pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
-  #[naked]
-  unsafe extern "C" fn trampoline_1() {
-    asm!(
+pub unsafe fn init(sp: &mut StackPointer, f: unsafe extern "C" fn(usize, StackPointer) -> !) {
+    #[naked]
+    unsafe extern "C" fn trampoline_1() {
+        asm!(
       r#"
         # gdb has a hardcoded check that rejects backtraces where frame addresses
         # do not monotonically decrease. It is turned off if the function is called
@@ -83,11 +81,11 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
       .size __morestack, .Lend-__morestack
       "#
       : : : : "volatile")
-  }
+    }
 
-  #[naked]
-  unsafe extern "C" fn trampoline_2() {
-    asm!(
+    #[naked]
+    unsafe extern "C" fn trampoline_2() {
+        asm!(
       r#"
         # Set up the second part of our DWARF CFI.
         # When unwinding the frame corresponding to this function, a DWARF unwinder
@@ -110,56 +108,52 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
         l.nop
       "#
       : : : : "volatile")
-  }
+    }
 
-  unsafe fn push(sp: &mut StackPointer, val: usize) {
-    sp.0 = sp.0.offset(-1);
-    *sp.0 = val
-  }
+    // We set up the stack in a somewhat special way so that to the unwinder it
+    // looks like trampoline_1 has called trampoline_2, which has in turn called
+    // swap::trampoline.
+    //
+    // There are 2 call frames in this setup, each containing the return address
+    // followed by the r2 value for that frame. This setup supports unwinding
+    // using DWARF CFI as well as the frame pointer-based unwinding used by tools
+    // such as perf or dtrace.
 
-  // We set up the stack in a somewhat special way so that to the unwinder it
-  // looks like trampoline_1 has called trampoline_2, which has in turn called
-  // swap::trampoline.
-  //
-  // There are 2 call frames in this setup, each containing the return address
-  // followed by the r2 value for that frame. This setup supports unwinding
-  // using DWARF CFI as well as the frame pointer-based unwinding used by tools
-  // such as perf or dtrace.
-  let mut sp = StackPointer(stack.base() as *mut usize);
+    sp.push(f as usize); // Function that trampoline_2 should call
 
-  push(&mut sp, f as usize); // Function that trampoline_2 should call
+    // Call frame for trampoline_2. The CFA slot is updated by swap::trampoline
+    // each time a context switch is performed.
+    sp.push(0xdead0cfa); // CFA slot
+    sp.push(trampoline_1 as usize + 4); // Return after the nop
 
-  // Call frame for trampoline_2. The CFA slot is updated by swap::trampoline
-  // each time a context switch is performed.
-  push(&mut sp, 0xdead0cfa);                // CFA slot
-  push(&mut sp, trampoline_1 as usize + 4); // Return after the nop
+    // Call frame for swap::trampoline. We set up the r2 value to point to the
+    // parent call frame.
+    let frame = *sp;
+    sp.push(frame.0 as usize); // Pointer to parent call frame
+    sp.push(trampoline_2 as usize + 4); // Entry point, skip initial nop
 
-  // Call frame for swap::trampoline. We set up the r2 value to point to the
-  // parent call frame.
-  let frame = sp;
-  push(&mut sp, frame.0 as usize);          // Pointer to parent call frame
-  push(&mut sp, trampoline_2 as usize + 4); // Entry point, skip initial nop
-
-  // The last two values are read by the swap trampoline and are actually in the
-  // red zone and not below the stack pointer.
-  frame
+    // The last two values are read by the swap trampoline and are actually in the
+    // red zone and not below the stack pointer.
 }
 
 #[inline(always)]
-pub unsafe fn swap(arg: usize, new_sp: StackPointer,
-                   new_stack: Option<&Stack>) -> (usize, StackPointer) {
-  // Address of the topmost CFA stack slot.
-  let mut dummy: usize = mem::uninitialized();
-  let new_cfa = if let Some(new_stack) = new_stack {
-    (new_stack.base() as *mut usize).offset(-2)
-  } else {
-    // Just pass a dummy pointer if we aren't linking the stack
-    &mut dummy
-  };
+pub unsafe fn swap(
+    arg: usize,
+    new_sp: StackPointer,
+    new_stack: Option<&Stack>,
+) -> (usize, StackPointer) {
+    // Address of the topmost CFA stack slot.
+    let mut dummy: usize = mem::uninitialized();
+    let new_cfa = if let Some(new_stack) = new_stack {
+        (new_stack.base() as *mut usize).offset(-2)
+    } else {
+        // Just pass a dummy pointer if we aren't linking the stack
+        &mut dummy
+    };
 
-  #[naked]
-  unsafe extern "C" fn trampoline() {
-    asm!(
+    #[naked]
+    unsafe extern "C" fn trampoline() {
+        asm!(
       r#"
         # Save the frame pointer and link register; the unwinder uses them to find
         # the CFA of the caller, and so they have to have the correct value immediately
@@ -189,11 +183,11 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
         l.nop
       "#
       : : : : "volatile")
-  }
+    }
 
-  let ret: usize;
-  let ret_sp: *mut usize;
-  asm!(
+    let ret: usize;
+    let ret_sp: *mut usize;
+    asm!(
     r#"
       # Call the trampoline to switch to the new context.
       l.jal   ${2}
@@ -211,5 +205,5 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
       "r24", "r25", "r26", "r27", "r28", "r29", "r30", "r31",
       "cc", "memory"
     : "volatile");
-  (ret, StackPointer(ret_sp))
+    (ret, StackPointer(ret_sp))
 }
