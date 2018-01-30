@@ -7,7 +7,7 @@
 // copied, modified, or distributed except according to those terms.
 
 pub use self::imp::*;
-use core::nonzero::NonZero;
+use core::ptr::NonNull;
 
 #[allow(unused_attributes)] // rust-lang/rust#35584
 #[cfg_attr(target_arch = "x86",     path = "x86.rs")]
@@ -18,23 +18,23 @@ use core::nonzero::NonZero;
 mod imp;
 
 #[derive(Debug, Clone, Copy)]
-pub struct StackPointer(NonZero<*mut usize>);
+pub struct StackPointer(NonNull<usize>);
 
 impl StackPointer {
   #[inline(always)]
   pub unsafe fn push(&mut self, val: usize) {
-    self.0 = NonZero::new(self.0.offset(-1));
-    **self.0 = val;
+    self.0 = NonNull::new_unchecked(self.0.as_ptr().offset(-1));
+    *self.0.as_mut() = val;
   }
 
   #[inline(always)]
   pub unsafe fn new(sp: *mut u8) -> StackPointer {
-    StackPointer(NonZero::new(sp as *mut usize))
+    StackPointer(NonNull::new_unchecked(sp as *mut usize))
   }
 
   #[inline(always)]
   pub unsafe fn offset(&self, count: isize) -> *mut usize {
-    self.0.offset(count)
+    self.0.as_ptr().offset(count)
   }
 }
 

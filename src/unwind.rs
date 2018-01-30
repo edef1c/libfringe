@@ -34,6 +34,7 @@ fn have_cross_stack_unwind() -> bool {
 }
 
 // Wrapper around the root function of a generator which handles unwinding.
+#[unwind(allowed)]
 pub unsafe extern "C" fn unwind_wrapper(arg: usize, sp: StackPointer, stack_base: *mut u8,
                                         f: unsafe fn(usize, StackPointer)) -> Option<Box<Box<Any + Send>>> {
   // Catch any attempts to unwind out of the context.
@@ -63,6 +64,7 @@ pub unsafe extern "C" fn unwind_wrapper(arg: usize, sp: StackPointer, stack_base
 
 // Called by asm to start unwinding in the current context with the given
 // exception object.
+#[unwind(allowed)]
 pub unsafe extern "C" fn start_unwind(panic: Box<Box<Any + Send>>) -> ! {
   // Use resume_unwind instead of panic! to avoid printing a message.
   panic::resume_unwind(*panic)

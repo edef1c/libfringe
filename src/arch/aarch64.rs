@@ -222,7 +222,7 @@ pub unsafe fn swap_link(arg: usize, new_sp: StackPointer,
     : "={x0}" (ret)
       "={x1}" (ret_sp)
     : "{x0}" (arg)
-      "{x2}" (*new_sp.0)
+      "{x2}" (new_sp.offset(0))
       "{x3}" (new_stack_base)
     :/*"x0", "x1",*/"x2",  "x3",  "x4",  "x5",  "x6",  "x7",
       "x8",  "x9",  "x10", "x11", "x12", "x13", "x14", "x15",
@@ -260,7 +260,7 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
     : "={x0}" (ret)
       "={x1}" (ret_sp)
     : "{x0}" (arg)
-      "{x2}" (*new_sp.0)
+      "{x2}" (new_sp.offset(0))
     :/*"x0", "x1",*/"x2",  "x3",  "x4",  "x5",  "x6",  "x7",
       "x8",  "x9",  "x10", "x11", "x12", "x13", "x14", "x15",
       "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23",
@@ -299,7 +299,7 @@ pub unsafe fn unwind(new_sp: StackPointer, new_stack_base: *mut u8) {
     :
     : "s" (unwind::start_unwind as usize)
       "{x0}" (arg)
-      "{x2}" (*new_sp.0)
+      "{x2}" (new_sp.offset(0))
       "{x3}" (new_stack_base)
     : "x0",  "x1",  "x2",  "x3",  "x4",  "x5",  "x6",  "x7",
       "x8",  "x9",  "x10", "x11", "x12", "x13", "x14", "x15",

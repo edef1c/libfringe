@@ -230,7 +230,7 @@ pub unsafe fn swap_link(arg: usize, new_sp: StackPointer,
     : "={rdi}" (ret)
       "={rsi}" (ret_sp)
     : "{rdi}" (arg)
-      "{rdx}" (*new_sp.0)
+      "{rdx}" (new_sp.offset(0))
       "{rcx}" (new_stack_base)
     : "rax",   "rbx",   "rcx",   "rdx", /*"rsi",   "rdi",   "rbp",   "rsp",*/
       "r8",    "r9",    "r10",   "r11",   "r12",   "r13",   "r14",   "r15",
@@ -269,7 +269,7 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer) -> (usize, StackPointer) {
     : "={rdi}" (ret)
       "={rsi}" (ret_sp)
     : "{rdi}" (arg)
-      "{rdx}" (*new_sp.0)
+      "{rdx}" (new_sp.offset(0))
     : "rax",   "rbx",   "rcx",   "rdx", /*"rsi",   "rdi",   "rbp",   "rsp",*/
       "r8",    "r9",    "r10",   "r11",   "r12",   "r13",   "r14",   "r15",
       "mm0",   "mm1",   "mm2",   "mm3",   "mm4",   "mm5",   "mm6",   "mm7",
@@ -307,7 +307,7 @@ pub unsafe fn unwind(new_sp: StackPointer, new_stack_base: *mut u8) {
     :
     : "s" (unwind::start_unwind as usize)
       "{rdi}" (arg)
-      "{rdx}" (*new_sp.0)
+      "{rdx}" (new_sp.offset(0))
       "{rcx}" (new_stack_base)
     : "rax",   "rbx",   "rcx",   "rdx",   "rsi",   "rdi", /*"rbp",   "rsp",*/
       "r8",    "r9",    "r10",   "r11",   "r12",   "r13",   "r14",   "r15",
