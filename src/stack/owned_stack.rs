@@ -4,7 +4,7 @@
 extern crate alloc;
 
 use core::slice;
-use self::alloc::heap::Heap;
+use self::alloc::heap::Global;
 use self::alloc::allocator::{Alloc, Layout};
 use self::alloc::boxed::Box;
 use stack::Stack;
@@ -19,8 +19,8 @@ impl OwnedStack {
     pub fn new(size: usize) -> OwnedStack {
         unsafe {
             let aligned_size = size & !(::STACK_ALIGNMENT - 1);
-            let ptr = Heap.alloc(Layout::from_size_align_unchecked(aligned_size, ::STACK_ALIGNMENT)).unwrap();
-            OwnedStack(Box::from_raw(slice::from_raw_parts_mut(ptr, aligned_size)))
+            let ptr = Global.alloc(Layout::from_size_align_unchecked(aligned_size, ::STACK_ALIGNMENT)).unwrap();
+            OwnedStack(Box::from_raw(slice::from_raw_parts_mut(ptr.as_ptr() as *mut u8, aligned_size)))
         }
     }
 }
