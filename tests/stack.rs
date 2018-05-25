@@ -9,14 +9,15 @@
 extern crate alloc;
 extern crate fringe;
 
-use alloc::heap::Heap;
+use alloc::heap::Global;
 use alloc::allocator::{Alloc, Layout};
 use alloc::boxed::Box;
 use std::slice;
 use fringe::{STACK_ALIGNMENT, Stack, SliceStack, OwnedStack, OsStack};
 
 unsafe fn heap_allocate(size: usize, align: usize) -> *mut u8 {
-  Heap.alloc(Layout::from_size_align_unchecked(size, align)).expect("couldn't allocate")
+  let ptr = Global.alloc(Layout::from_size_align_unchecked(size, align)).expect("couldn't allocate");
+  ptr.as_ptr() as *mut u8
 }
 
 #[test]
