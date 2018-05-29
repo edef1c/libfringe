@@ -15,13 +15,14 @@ libc = "0.2.14"
 optional = true
 version = "1.0.0"
 
-[dev-dependencies]
+[target.'cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))'.dev-dependencies]
 simd = "0.1"
 
 [features]
-default = ["alloc", "valgrind"]
+default = ["alloc", "valgrind", "unwind"]
 alloc = []
 valgrind = ["valgrind_request"]
+unwind = []
 
 # These apply only to tests within this library; assembly at -O0 is completely
 # unreadable, so use -O1.

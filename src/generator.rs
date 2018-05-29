@@ -19,6 +19,36 @@ use stack;
 use debug;
 use arch::{self, StackPointer};
 
+// Wrapper to prevent the compiler from automatically dropping a value when it
+// goes out of scope. This is particularly useful when dealing with unwinding
+// since mem::forget won't be executed when unwinding.
+#[allow(unions_with_drop_fields)]
+union NoDrop<T> {
+  inner: T,
+}
+
+// Try to pack a value into a usize if it fits, otherwise pass its address as a usize.
+unsafe fn encode_usize<T>(val: &NoDrop<T>) -> usize {
+  if mem::size_of::<T>() <= mem::size_of::<usize>() &&
+     mem::align_of::<T>() <= mem::align_of::<usize>() {
+    let mut out = 0;
+    ptr::copy_nonoverlapping(&val.inner, &mut out as *mut usize as *mut T, 1);
+    out
+  } else {
+    &val.inner as *const T as usize
+  }
+}
+
+// Unpack a usize produced by encode_usize.
+unsafe fn decode_usize<T>(val: usize) -> T {
+  if mem::size_of::<T>() <= mem::size_of::<usize>() &&
+     mem::align_of::<T>() <= mem::align_of::<usize>() {
+    ptr::read(&val as *const usize as *const T)
+  } else {
+    ptr::read(val as *const T)
+  }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum State {
   /// Generator can be resumed. This is the initial state.
@@ -83,16 +113,10 @@ pub enum State {
 /// ```
 #[derive(Debug)]
 pub struct Generator<'a, Input: 'a, Output: 'a, Stack: stack::Stack> {
-  state:     State,
   stack:     NoDrop<Stack>,
-  stack_id:  NoDrop<debug::StackId>,
-  stack_ptr: arch::StackPointer,
+  stack_id:  debug::StackId,
+  stack_ptr: Option<arch::StackPointer>,
   phantom:   PhantomData<(&'a (), *mut Input, *const Output)>
-}
-
-#[allow(unions_with_drop_fields)]
-union NoDrop<T> {
-  inner: T
 }
 
 impl<T: ::core::fmt::Debug> ::core::fmt::Debug for NoDrop<T> {
@@ -124,31 +148,28 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// See also the [contract](../trait.Stack.html) that needs to be fulfilled by `stack`.
   pub unsafe fn unsafe_new<F>(stack: Stack, f: F) -> Generator<'a, Input, Output, Stack>
       where F: FnOnce(&Yielder<Input, Output>, Input) + 'a {
-    unsafe extern "C" fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer) -> !
+    unsafe fn generator_wrapper<Input, Output, Stack, F>(env: usize, stack_ptr: StackPointer)
         where Stack: stack::Stack, F: FnOnce(&Yielder<Input, Output>, Input) {
       // Retrieve our environment from the callee and return control to it.
-      let f = ptr::read(env as *const F);
-      let (data, stack_ptr) = arch::swap(0, stack_ptr, None);
+      let f: F = decode_usize(env);
+      let (data, stack_ptr) = arch::swap(0, stack_ptr);
       // See the second half of Yielder::suspend_bare.
-      let input = ptr::read(data as *const Input);
+      let input = decode_usize(data);
       // Run the body of the generator.
       let yielder = Yielder::new(stack_ptr);
       f(&yielder, input);
-      // Past this point, the generator has dropped everything it has held.
-      loop { yielder.suspend_bare(None); }
     }
 
     let stack_id  = debug::StackId::register(&stack);
-    let stack_ptr = arch::init(&stack, generator_wrapper::<Input, Output, Stack, F>);
+    let stack_ptr = arch::init(stack.base(), generator_wrapper::<Input, Output, Stack, F>);
 
     // Transfer environment to the callee.
-    let stack_ptr = arch::swap(&f as *const F as usize, stack_ptr, Some(&stack)).1;
-    mem::forget(f);
+    let f = NoDrop { inner: f };
+    let stack_ptr = arch::swap_link(encode_usize(&f), stack_ptr, stack.base()).1;
 
     Generator {
-      state:     State::Runnable,
       stack:     NoDrop { inner: stack },
-      stack_id:  NoDrop { inner: stack_id },
+      stack_id:  stack_id,
       stack_ptr: stack_ptr,
       phantom:   PhantomData
     }
@@ -158,44 +179,38 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// If the generator function has returned, returns `None`.
   #[inline]
   pub fn resume(&mut self, input: Input) -> Option<Output> {
-    match self.state {
-      State::Runnable => {
-        // Set the state to Unavailable. Since we have exclusive access to the generator,
-        // the only case where this matters is the generator function panics, after which
-        // it must not be invocable again.
-        self.state = State::Unavailable;
+    // Return None if we have no stack pointer (generator function already returned).
+    self.stack_ptr.and_then(|stack_ptr| {
+      // Set the state to Unavailable. Since we have exclusive access to the generator,
+      // the only case where this matters is the generator function panics, after which
+      // it must not be invocable again.
+      self.stack_ptr = None;
 
-        // Switch to the generator function, and retrieve the yielded value.
-        let val = unsafe {
-          let (data_out, stack_ptr) = arch::swap(&input as *const Input as usize, self.stack_ptr, Some(&self.stack.inner));
-          self.stack_ptr = stack_ptr;
-          mem::forget(input);
-          ptr::read(data_out as *const Option<Output>)
-        };
+      // Switch to the generator function, and retrieve the yielded value.
+      unsafe {
+        let input = NoDrop { inner: input };
+        let (data_out, stack_ptr) = arch::swap_link(encode_usize(&input), stack_ptr, self.stack.inner.base());
+        self.stack_ptr = stack_ptr;
 
-        // Unless the generator function has returned, it can be switched to again, so
-        // set the state to Runnable.
-        if val.is_some() { self.state = State::Runnable }
-
-        val
+        // If the generator function has finished, return None, otherwise return the
+        // yielded value.
+        stack_ptr.map(|_| decode_usize(data_out))
       }
-      State::Unavailable => None
-    }
+    })
   }
 
   /// Returns the state of the generator.
   #[inline]
-  pub fn state(&self) -> State { self.state }
+  pub fn state(&self) -> State {
+    if self.stack_ptr.is_some() { State::Runnable } else { State::Unavailable }
+  }
 
   /// Extracts the stack from a generator when the generator function has returned.
   /// If the generator function has not returned
   /// (i.e. `self.state() == State::Runnable`), panics.
   pub fn unwrap(self) -> Stack {
-    match self.state {
-      State::Runnable => {
-        mem::forget(self);
-        panic!("Argh! Bastard! Don't touch that!")
-      }
+    match self.state() {
+      State::Runnable => panic!("Argh! Bastard! Don't touch that!"),
       State::Unavailable => unsafe { self.unsafe_unwrap() }
     }
   }
@@ -203,8 +218,13 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
   /// Extracts the stack from a generator without checking if the generator function has returned.
   /// This will leave any pointers into the generator stack dangling, and won't run destructors.
   pub unsafe fn unsafe_unwrap(mut self) -> Stack {
-    ptr::drop_in_place(&mut self.stack_id.inner);
-    let stack = ptr::read(&mut self.stack.inner);
+    if cfg!(feature = "unwind") {
+      self.stack_ptr.map(|stack_ptr| arch::unwind(stack_ptr, self.stack.inner.base()));
+    }
+
+    // We can't just return self.stack since Generator has a Drop impl
+    let stack = ptr::read(&self.stack.inner);
+    ptr::drop_in_place(&mut self.stack_id);
     mem::forget(self);
     stack
   }
@@ -214,10 +234,15 @@ impl<'a, Input, Output, Stack> Drop for Generator<'a, Input, Output, Stack>
     where Input: 'a, Output: 'a, Stack: stack::Stack {
   fn drop(&mut self) {
     unsafe {
-      ptr::drop_in_place(&mut self.stack_id.inner);
-      match self.state {
-        State::Runnable    => panic!("dropped unfinished Generator"),
-        State::Unavailable => ptr::drop_in_place(&mut self.stack.inner)
+      match self.stack_ptr {
+        Some(stack_ptr) => {
+          // If unwinding is not available then we have to leak the stack.
+          if cfg!(feature = "unwind") {
+            arch::unwind(stack_ptr, self.stack.inner.base());
+            ptr::drop_in_place(&mut self.stack.inner);
+          }
+        }
+        None => ptr::drop_in_place(&mut self.stack.inner)
       }
     }
   }
@@ -227,25 +252,15 @@ impl<'a, Input, Output, Stack> Drop for Generator<'a, Input, Output, Stack>
 /// returns a value.
 #[derive(Debug)]
 pub struct Yielder<Input, Output> {
-  stack_ptr: Cell<StackPointer>,
+  stack_ptr: Cell<Option<StackPointer>>,
   phantom: PhantomData<(*const Input, *mut Output)>
 }
 
 impl<Input, Output> Yielder<Input, Output> {
   fn new(stack_ptr: StackPointer) -> Yielder<Input, Output> {
     Yielder {
-      stack_ptr: Cell::new(stack_ptr),
+      stack_ptr: Cell::new(Some(stack_ptr)),
       phantom: PhantomData
-    }
-  }
-
-  #[inline(always)]
-  fn suspend_bare(&self, val: Option<Output>) -> Input {
-    unsafe {
-      let (data, stack_ptr) = arch::swap(&val as *const Option<Output> as usize, self.stack_ptr.get(), None);
-      self.stack_ptr.set(stack_ptr);
-      mem::forget(val);
-      ptr::read(data as *const Input)
     }
   }
 
@@ -253,7 +268,27 @@ impl<Input, Output> Yielder<Input, Output> {
   /// invocation that resumed the generator.
   #[inline(always)]
   pub fn suspend(&self, item: Output) -> Input {
-    self.suspend_bare(Some(item))
+    unsafe {
+      struct PanicGuard<'a>(&'a Cell<Option<StackPointer>>);
+      impl<'a> Drop for PanicGuard<'a> {
+        fn drop(&mut self) {
+          self.0.set(None);
+        }
+      }
+
+      let stack_ptr = self.stack_ptr.get().expect("attempted to yield while unwinding");
+      let item = NoDrop { inner: item };
+
+      // Use a PanicGuard to set self.stack_ptr to None if unwinding occurs. This
+      // is necessary to guarantee safety in case someone tries to call yield
+      // while we are unwinding since there is nowhere to yield to.
+      let guard = PanicGuard(&self.stack_ptr);
+      let (data, stack_ptr) = arch::swap(encode_usize(&item), stack_ptr);
+      mem::forget(guard);
+
+      self.stack_ptr.set(Some(stack_ptr));
+      decode_usize(data)
+    }
   }
 }
 

@@ -4,7 +4,8 @@
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
-#![feature(asm, naked_functions, cfg_target_vendor, untagged_unions)]
+
+#![feature(asm, naked_functions, cfg_target_vendor, untagged_unions, unwind_attributes)]
 #![cfg_attr(feature = "alloc", feature(alloc, heap_api, allocator_api))]
 #![cfg_attr(test, feature(test))]
 #![no_std]
@@ -42,6 +43,13 @@ mod arch;
 pub const STACK_ALIGNMENT: usize = arch::STACK_ALIGNMENT;
 
 mod debug;
+
+#[cfg(feature = "unwind")]
+#[path = "unwind.rs"]
+mod unwind;
+#[cfg(not(feature = "unwind"))]
+#[path = "no_unwind.rs"]
+mod unwind;
 
 pub mod generator;
 
