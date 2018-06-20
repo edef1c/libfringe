@@ -4,8 +4,8 @@
 extern crate alloc;
 
 use core::slice;
-use self::alloc::heap::Global;
-use self::alloc::allocator::{Alloc, Layout};
+use self::alloc::alloc::Global;
+use self::alloc::alloc::{Alloc, Layout};
 use self::alloc::boxed::Box;
 use stack::Stack;
 

@@ -208,7 +208,7 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
         # to avoid return address mispredictions (~8ns per `ret` on Ivy Bridge).
         popl    %eax
         .cfi_adjust_cfa_offset -4
-        .cfi_register %eip, %eax
+        .cfi_register 8, %eax
         jmpl    *%eax
       "#
       : : : : "volatile")

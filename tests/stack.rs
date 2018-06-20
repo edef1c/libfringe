@@ -9,8 +9,8 @@
 extern crate alloc;
 extern crate fringe;
 
-use alloc::heap::Global;
-use alloc::allocator::{Alloc, Layout};
+use alloc::alloc::Global;
+use alloc::alloc::{Alloc, Layout};
 use alloc::boxed::Box;
 use std::slice;
 use fringe::{STACK_ALIGNMENT, Stack, SliceStack, OwnedStack, OsStack};
