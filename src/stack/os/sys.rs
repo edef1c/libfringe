@@ -7,7 +7,7 @@
 extern crate std;
 extern crate libc;
 
-use self::std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
+use self::std::sync::atomic::{AtomicUsize, Ordering};
 use self::std::ptr;
 use self::std::io::Error as IoError;
 use self::libc::{c_void, c_int, size_t};
@@ -60,7 +60,7 @@ pub fn page_size() -> usize {
     }
   }
 
-  static PAGE_SIZE_CACHE: AtomicUsize = ATOMIC_USIZE_INIT;
+  static PAGE_SIZE_CACHE: AtomicUsize = AtomicUsize::new(0);
   match PAGE_SIZE_CACHE.load(Ordering::Relaxed) {
     0 => {
       let page_size = sys_page_size();
