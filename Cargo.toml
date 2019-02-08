@@ -15,7 +15,7 @@ libc = "0.2.14"
 optional = true
 version = "1.0.0"
 
-[dev-dependencies]
+[target.'cfg(unix)'.dev-dependencies]
 simd = "0.1"
 
 [features]
