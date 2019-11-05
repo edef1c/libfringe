@@ -18,7 +18,7 @@ mod imp;
 #[cfg(test)]
 mod tests {
   extern crate test;
-  extern crate simd;
+  extern crate packed_simd;
 
   use arch::{self, StackPointer};
   use ::OsStack;
@@ -48,12 +48,12 @@ mod tests {
   fn context_simd() {
     unsafe extern "C" fn permuter(arg: usize, stack_ptr: StackPointer) -> ! {
       // This will crash if the stack is not aligned properly.
-      let x = simd::i32x4::splat(arg as i32);
+      let x = packed_simd::i32x4::splat(arg as i32);
       let y = x * x;
       println!("simd result: {:?}", y);
       let (_, stack_ptr) = arch::swap(0, stack_ptr, None);
       // And try again after a context switch.
-      let x = simd::i32x4::splat(arg as i32);
+      let x = packed_simd::i32x4::splat(arg as i32);
       let y = x * x;
       println!("simd result: {:?}", y);
       arch::swap(0, stack_ptr, None);
