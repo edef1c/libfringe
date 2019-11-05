@@ -16,7 +16,7 @@ optional = true
 version = "1.0.0"
 
 [target.'cfg(unix)'.dev-dependencies]
-simd = "0.1"
+packed_simd = "0.3.3"
 
 [features]
 default = ["alloc", "valgrind"]

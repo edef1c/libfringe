@@ -92,7 +92,7 @@ pub struct Generator<'a, Input: 'a, Output: 'a, Stack: stack::Stack> {
 
 #[allow(unions_with_drop_fields)]
 union NoDrop<T> {
-  inner: T
+  inner: mem::ManuallyDrop<T>
 }
 
 impl<T: ::core::fmt::Debug> ::core::fmt::Debug for NoDrop<T> {
@@ -147,8 +147,8 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
 
     Generator {
       state:     State::Runnable,
-      stack:     NoDrop { inner: stack },
-      stack_id:  NoDrop { inner: stack_id },
+      stack:     NoDrop { inner: mem::ManuallyDrop::new(stack) },
+      stack_id:  NoDrop { inner: mem::ManuallyDrop::new(stack_id) },
       stack_ptr: stack_ptr,
       phantom:   PhantomData
     }
@@ -167,7 +167,7 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
 
         // Switch to the generator function, and retrieve the yielded value.
         let val = unsafe {
-          let (data_out, stack_ptr) = arch::swap(&input as *const Input as usize, self.stack_ptr, Some(&self.stack.inner));
+          let (data_out, stack_ptr) = arch::swap(&input as *const Input as usize, self.stack_ptr, Some(&*self.stack.inner));
           self.stack_ptr = stack_ptr;
           mem::forget(input);
           ptr::read(data_out as *const Option<Output>)
@@ -206,7 +206,7 @@ impl<'a, Input, Output, Stack> Generator<'a, Input, Output, Stack>
     ptr::drop_in_place(&mut self.stack_id.inner);
     let stack = ptr::read(&mut self.stack.inner);
     mem::forget(self);
-    stack
+    mem::ManuallyDrop::into_inner(stack)
   }
 }
 
