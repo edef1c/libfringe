@@ -52,6 +52,7 @@ use stack::Stack;
 pub const STACK_ALIGNMENT: usize = 16;
 
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct StackPointer(*mut usize);
 
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
