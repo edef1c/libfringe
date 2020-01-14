@@ -6,16 +6,16 @@
 // copied, modified, or distributed except according to those terms.
 #![feature(alloc, allocator_api)]
 
-extern crate core;
 extern crate alloc;
+extern crate core;
 extern crate fringe;
 
 use alloc::alloc::alloc;
 use core::alloc::Layout;
 
 use alloc::boxed::Box;
+use fringe::{OsStack, OwnedStack, SliceStack, Stack, STACK_ALIGNMENT};
 use std::slice;
-use fringe::{STACK_ALIGNMENT, Stack, SliceStack, OwnedStack, OsStack};
 
 unsafe fn heap_allocate(size: usize, align: usize) -> *mut u8 {
   alloc(Layout::from_size_align_unchecked(size, align))
@@ -90,7 +90,9 @@ fn default_os_stack() {
   assert_eq!(stack.limit() as usize & (STACK_ALIGNMENT - 1), 0);
 
   // Make sure the topmost page of the stack, at least, is accessible.
-  unsafe { *(stack.base().offset(-1)) = 0; }
+  unsafe {
+    *(stack.base().offset(-1)) = 0;
+  }
 }
 
 #[test]
@@ -100,5 +102,7 @@ fn one_page_os_stack() {
   assert_eq!(stack.limit() as usize & (STACK_ALIGNMENT - 1), 0);
 
   // Make sure the topmost page of the stack, at least, is accessible.
-  unsafe { *(stack.base().offset(-1)) = 0; }
+  unsafe {
+    *(stack.base().offset(-1)) = 0;
+  }
 }

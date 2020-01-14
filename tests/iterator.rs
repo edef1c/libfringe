@@ -6,17 +6,21 @@
 // copied, modified, or distributed except according to those terms.
 extern crate fringe;
 
-use fringe::OsStack;
 use fringe::generator::Generator;
+use fringe::OsStack;
 
 #[test]
 fn producer() {
   let stack = OsStack::new(0).unwrap();
   let mut gen = Generator::new(stack, move |yielder, ()| {
-    for i in 0.. { yielder.suspend(i) }
+    for i in 0.. {
+      yielder.suspend(i)
+    }
   });
   assert_eq!(gen.next(), Some(0));
   assert_eq!(gen.next(), Some(1));
   assert_eq!(gen.next(), Some(2));
-  unsafe { gen.unsafe_unwrap(); }
+  unsafe {
+    gen.unsafe_unwrap();
+  }
 }
