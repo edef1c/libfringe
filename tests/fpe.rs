@@ -11,11 +11,11 @@
 #![feature(asm)]
 extern crate fringe;
 extern crate test;
-use fringe::{OsStack, Generator};
+use fringe::{Generator, OsStack};
 use test::black_box;
 
 const FE_DIVBYZERO: i32 = 0x4;
-extern {
+extern "C" {
   fn feenableexcept(except: i32) -> i32;
 }
 
@@ -27,6 +27,8 @@ fn fpe() {
     yielder.suspend(1.0 / black_box(0.0));
   });
 
-  unsafe { feenableexcept(FE_DIVBYZERO); }
+  unsafe {
+    feenableexcept(FE_DIVBYZERO);
+  }
   println!("{:?}", gen.resume(()));
 }

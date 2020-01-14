@@ -7,12 +7,14 @@
 // copied, modified, or distributed except according to those terms.
 extern crate fringe;
 
-use fringe::{SliceStack, OwnedStack, OsStack};
 use fringe::generator::{Generator, Yielder};
+use fringe::{OsStack, OwnedStack, SliceStack};
 
 fn add_one_fn(yielder: &Yielder<i32, i32>, mut input: i32) {
   loop {
-    if input == 0 { break }
+    if input == 0 {
+      break;
+    }
     input = yielder.suspend(input + 1)
   }
 }
@@ -48,7 +50,7 @@ fn move_after_new() {
 #[should_panic]
 fn panic_safety() {
   struct Wrapper {
-    gen: Generator<'static, (), (), OsStack>
+    gen: Generator<'static, (), (), OsStack>,
   }
 
   impl Drop for Wrapper {
@@ -58,9 +60,7 @@ fn panic_safety() {
   }
 
   let stack = OsStack::new(4 << 20).unwrap();
-  let gen = Generator::new(stack, move |_yielder, ()| {
-    panic!("foo")
-  });
+  let gen = Generator::new(stack, move |_yielder, ()| panic!("foo"));
 
   let mut wrapper = Wrapper { gen: gen };
   wrapper.gen.resume(());
@@ -99,7 +99,7 @@ fn forget_yielded() {
     }
   }
 
-  let stack = fringe::OsStack::new(1<<16).unwrap();
+  let stack = fringe::OsStack::new(1 << 16).unwrap();
   let flag = Cell::new(false);
   let mut generator = Generator::new(stack, |yielder, ()| {
     yielder.suspend(Dropper(&flag));

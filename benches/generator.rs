@@ -5,18 +5,24 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 #![feature(test)]
-extern crate test;
 extern crate fringe;
+extern crate test;
 
-use fringe::{OsStack, Generator};
+use fringe::{Generator, OsStack};
 
 #[bench]
 fn generate(b: &mut test::Bencher) {
   let stack = OsStack::new(0).unwrap();
-  let mut identity = Generator::new(stack, move |yielder, mut input| {
-    loop { input = yielder.suspend(input) }
+  let mut identity = Generator::new(stack, move |yielder, mut input| loop {
+    input = yielder.suspend(input)
   });
 
-  b.iter(|| for _ in 0..10 { test::black_box(identity.resume(test::black_box(0))); });
-  unsafe { identity.unsafe_unwrap(); }
+  b.iter(|| {
+    for _ in 0..10 {
+      test::black_box(identity.resume(test::black_box(0)));
+    }
+  });
+  unsafe {
+    identity.unsafe_unwrap();
+  }
 }
