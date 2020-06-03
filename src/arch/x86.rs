@@ -54,7 +54,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
   #[cfg(not(target_vendor = "apple"))]
   #[naked]
   unsafe extern "C" fn trampoline_1() {
-    asm!(
+    llvm_asm!(
       r#"
         # gdb has a hardcoded check that rejects backtraces where frame addresses
         # do not monotonically decrease. It is turned off if the function is called
@@ -94,7 +94,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
   #[cfg(target_vendor = "apple")]
   #[naked]
   unsafe extern "C" fn trampoline_1() {
-    asm!(
+    llvm_asm!(
       r#"
       # Identical to the above, except avoids .local/.size that aren't available on Mach-O.
       __morestack:
@@ -109,7 +109,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
 
   #[naked]
   unsafe extern "C" fn trampoline_2() {
-    asm!(
+    llvm_asm!(
       r#"
         # Set up the second part of our DWARF CFI.
         # When unwinding the frame corresponding to this function, a DWARF unwinder
@@ -182,7 +182,7 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
 
   #[naked]
   unsafe extern "C" fn trampoline() {
-    asm!(
+    llvm_asm!(
       r#"
         # Save frame pointer explicitly; the unwinder uses it to find CFA of
         # the caller, and so it has to have the correct value immediately after
@@ -217,7 +217,7 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
 
   let ret: usize;
   let ret_sp: *mut usize;
-  asm!(
+  llvm_asm!(
     r#"
       # Push instruction pointer of the old context and switch to
       # the new context.

@@ -12,7 +12,7 @@ extern crate test;
 #[bench]
 fn syscall(b: &mut test::Bencher) {
   b.iter(|| unsafe {
-    asm!("movq $$102, %rax\n\
+    llvm_asm!("movq $$102, %rax\n\
           syscall"
          :
          :
@@ -25,7 +25,7 @@ fn syscall(b: &mut test::Bencher) {
 #[bench]
 fn syscall(b: &mut test::Bencher) {
   b.iter(|| unsafe {
-    asm!("mov $$24, %eax\n\
+    llvm_asm!("mov $$24, %eax\n\
           int $$0x80"
          :
          :
