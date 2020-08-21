@@ -8,7 +8,7 @@
 #![cfg(target_os = "linux")]
 #![feature(test)]
 #![feature(thread_local)]
-#![feature(asm)]
+#![feature(llvm_asm)]
 extern crate fringe;
 extern crate test;
 use fringe::{OsStack, Generator};

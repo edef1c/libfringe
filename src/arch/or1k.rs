@@ -53,7 +53,7 @@ pub struct StackPointer(*mut usize);
 pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -> !) -> StackPointer {
   #[naked]
   unsafe extern "C" fn trampoline_1() {
-    asm!(
+    llvm_asm!(
       r#"
         # gdb has a hardcoded check that rejects backtraces where frame addresses
         # do not monotonically decrease. It is turned off if the function is called
@@ -88,7 +88,7 @@ pub unsafe fn init(stack: &Stack, f: unsafe extern "C" fn(usize, StackPointer) -
 
   #[naked]
   unsafe extern "C" fn trampoline_2() {
-    asm!(
+    llvm_asm!(
       r#"
         # Set up the second part of our DWARF CFI.
         # When unwinding the frame corresponding to this function, a DWARF unwinder
@@ -160,7 +160,7 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
 
   #[naked]
   unsafe extern "C" fn trampoline() {
-    asm!(
+    llvm_asm!(
       r#"
         # Save the frame pointer and link register; the unwinder uses them to find
         # the CFA of the caller, and so they have to have the correct value immediately
@@ -194,7 +194,7 @@ pub unsafe fn swap(arg: usize, new_sp: StackPointer,
 
   let ret: usize;
   let ret_sp: *mut usize;
-  asm!(
+  llvm_asm!(
     r#"
       # Call the trampoline to switch to the new context.
       l.jal   ${2}
