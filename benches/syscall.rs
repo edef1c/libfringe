@@ -5,14 +5,14 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 #![cfg(target_os = "linux")]
-#![feature(asm, test)]
+#![feature(llvm_asm, test)]
 extern crate test;
 
 #[cfg(target_arch = "x86_64")]
 #[bench]
 fn syscall(b: &mut test::Bencher) {
   b.iter(|| unsafe {
-    asm!("movq $$102, %rax\n\
+    llvm_asm!("movq $$102, %rax\n\
           syscall"
          :
          :
