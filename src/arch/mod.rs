@@ -13,6 +13,7 @@ pub use self::imp::*;
 #[cfg_attr(target_arch = "x86_64",  path = "x86_64.rs")]
 #[cfg_attr(target_arch = "aarch64", path = "aarch64.rs")]
 #[cfg_attr(target_arch = "or1k",    path = "or1k.rs")]
+#[cfg_attr(target_arch = "riscv32", path = "riscv32.rs")]
 mod imp;
 
 #[cfg(test)]
