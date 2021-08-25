@@ -1,5 +1,7 @@
 // This file is part of libfringe, a low-level green threading library.
-// Copyright (c) edef <edef@edef.eu>,
+// Copyright (c) M-Labs Limited,
+//               occheung <dc@m-labs.hk>,
+//               edef <edef@edef.eu>,
 //               whitequark <whitequark@whitequark.org>
 //               Amanieu d'Antras <amanieu@gmail.com>
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
